@@ -24,6 +24,10 @@ interface DashboardDesignContentProps {
   jobRoles: Array<{ id: string; name: string }>;
   workLocations: Array<{ id: string; name: string }>;
   projects: Array<{ id: string; name: string }>;
+  eyebrow?: string;
+  title?: string;
+  description?: string;
+  actions?: React.ReactNode;
 }
 
 const getDashboardStats = (employees: EmployeeProfile[]) => {
@@ -62,6 +66,10 @@ export default function DashboardDesignContent({
   jobRoles,
   workLocations,
   projects,
+  eyebrow = "Employee Directory",
+  title,
+  description,
+  actions,
 }: DashboardDesignContentProps) {
   const [employees, setEmployees] =
     useState<EmployeeProfile[]>(initialEmployees);
@@ -145,12 +153,29 @@ export default function DashboardDesignContent({
           <div className="flex flex-col gap-4">
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-700">
-                Employee Directory
+                {eyebrow}
               </p>
-              {/* <h1 className="text-2xl font-semibold tracking-tight text-slate-950 md:text-[2rem]">
-                Employee data view
-              </h1> */}
-             
+              {(title || description || actions) && (
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="space-y-1">
+                    {title && (
+                      <h1 className="text-2xl font-semibold tracking-tight text-slate-950 md:text-[2rem]">
+                        {title}
+                      </h1>
+                    )}
+                    {description && (
+                      <p className="max-w-3xl text-sm leading-6 text-slate-500">
+                        {description}
+                      </p>
+                    )}
+                  </div>
+                  {actions && (
+                    <div className="flex flex-wrap items-center gap-3">
+                      {actions}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

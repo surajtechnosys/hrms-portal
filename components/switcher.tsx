@@ -65,10 +65,10 @@ export function Switcher({ menu }: { menu: SwitcherMenu }) {
                     size="lg"
                     className={cn(
                       `
-                rounded-[1.25rem] cursor-pointer transition-all duration-200
+                rounded-[1.35rem] cursor-pointer transition-all duration-200
                 ${isActive
-                        ? "bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25"
-                        : "text-slate-700 hover:bg-white/70 hover:text-slate-900"
+                        ? "bg-gradient-to-r from-slate-900 via-cyan-700 to-sky-600 text-white shadow-[0_18px_34px_-20px_rgba(8,145,178,0.6)]"
+                        : "text-slate-700 hover:bg-slate-50/95 hover:text-slate-950"
                       }
               `,
                       isCollapsed && "justify-center px-0"
@@ -79,8 +79,8 @@ export function Switcher({ menu }: { menu: SwitcherMenu }) {
                         `
                   flex aspect-square size-9 items-center justify-center rounded-2xl
                   ${isActive
-                          ? "bg-white/20 text-white"
-                          : "border border-white/50 bg-white/55 text-cyan-700"
+                          ? "bg-white/14 text-white ring-1 ring-white/18"
+                          : "border border-slate-200/80 bg-white text-cyan-700 shadow-sm"
                         }
                 `,
                         isCollapsed && "size-10"
@@ -97,8 +97,8 @@ export function Switcher({ menu }: { menu: SwitcherMenu }) {
                       <span
                         className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                           isActive
-                            ? "bg-white/15 text-white"
-                            : "bg-sky-500/10 text-sky-700 ring-1 ring-sky-200/70"
+                            ? "bg-white/14 text-white"
+                            : "bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200/80"
                         }`}
                       >
                         {children.length}
@@ -113,13 +113,13 @@ export function Switcher({ menu }: { menu: SwitcherMenu }) {
                 </DropdownMenuTrigger>
               </TooltipTrigger>
               {isCollapsed && (
-                <TooltipContent side="right" className="border-0 bg-slate-900 text-white">
+                <TooltipContent side="right" className="border-0 bg-slate-900 text-white shadow-xl">
                   {menu.name}
                 </TooltipContent>
               )}
 
               <DropdownMenuContent
-                className="min-w-60 rounded-[1.5rem] border border-white/50 bg-white/85 p-1.5 shadow-2xl backdrop-blur-xl"
+                className="min-w-60 rounded-[1.5rem] border border-slate-200/80 bg-white/95 p-1.5 shadow-[0_24px_48px_-28px_rgba(15,23,42,0.28)] backdrop-blur-xl"
                 align="start"
                 side={isMobile ? "bottom" : "right"}
                 sideOffset={10}
@@ -133,17 +133,17 @@ export function Switcher({ menu }: { menu: SwitcherMenu }) {
                 {children.map((m: SwitcherMenuItem, index: number) => (
                   <DropdownMenuItem
                     key={m.name}
-                    className="cursor-pointer gap-3 rounded-[1rem] p-2.5 text-slate-700 hover:bg-cyan-50/80 focus:bg-cyan-50/80"
+                    className="cursor-pointer gap-3 rounded-[1rem] p-2.5 text-slate-700 hover:bg-slate-50 focus:bg-slate-50"
                     onSelect={() => router.push(m.url)}
                   >
-                    <div className="flex size-8 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20">
+                    <div className="flex size-8 items-center justify-center rounded-xl bg-gradient-to-br from-slate-900 via-cyan-700 to-sky-600 text-white shadow-[0_14px_24px_-16px_rgba(8,145,178,0.55)]">
                       {m.icon}
                     </div>
 
                     <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
                       <span className="truncate">{m.name}</span>
                       {pathname.startsWith(m.url) ? (
-                        <span className="h-2 w-2 rounded-full bg-cyan-600" />
+                        <span className="h-2 w-2 rounded-full bg-cyan-700" />
                       ) : null}
                     </div>
 

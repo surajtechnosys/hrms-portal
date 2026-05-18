@@ -73,22 +73,22 @@
   --chart-4: oklch(0.68 0.15 12);
   --chart-5: oklch(0.62 0.14 290);
   --radius: 0.625rem;
-  --sidebar: oklch(0.98 0.015 220 / 76%);
-  --sidebar-foreground: oklch(0.27 0.04 250);
+  --sidebar: oklch(0.985 0.012 220 / 92%);
+  --sidebar-foreground: oklch(0.24 0.035 248);
   --sidebar-primary: oklch(0.59 0.17 239);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.96 0.03 225 / 88%);
-  --sidebar-accent-foreground: oklch(0.24 0.045 250);
-  --sidebar-border: oklch(0.87 0.03 225 / 75%);
+  --sidebar-accent: oklch(0.955 0.028 214 / 94%);
+  --sidebar-accent-foreground: oklch(0.21 0.04 248);
+  --sidebar-border: oklch(0.84 0.024 225 / 72%);
   --sidebar-ring: oklch(0.7 0.12 220);
   --page-gradient:
     radial-gradient(circle at top left, rgba(56, 189, 248, 0.22), transparent 26%),
     radial-gradient(circle at top right, rgba(45, 212, 191, 0.2), transparent 22%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(236, 245, 255, 0.94));
-  --glass-surface: linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.52));
-  --glass-elevated: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.64));
-  --glass-border: rgba(255, 255, 255, 0.5);
-  --glass-shadow: 0 22px 50px -28px rgba(15, 23, 42, 0.3);
+  --glass-surface: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(248, 252, 255, 0.72));
+  --glass-elevated: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 250, 255, 0.82));
+  --glass-border: rgba(203, 213, 225, 0.55);
+  --glass-shadow: 0 24px 60px -34px rgba(15, 23, 42, 0.24);
 }
 
 .dark {
@@ -149,14 +149,14 @@
 
   .glass-panel-strong {
     background: var(--glass-elevated);
-    border: 1px solid rgba(255, 255, 255, 0.62);
-    box-shadow: 0 28px 60px -34px rgba(14, 116, 144, 0.38);
+    border: 1px solid rgba(203, 213, 225, 0.58);
+    box-shadow: 0 28px 60px -34px rgba(14, 116, 144, 0.22);
     backdrop-filter: blur(22px);
   }
 
   .glass-chip {
-    background: rgba(255, 255, 255, 0.62);
-    border: 1px solid rgba(255, 255, 255, 0.56);
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(203, 213, 225, 0.5);
     backdrop-filter: blur(12px);
   }
 

@@ -59,16 +59,16 @@ export function NavUser({
             <SidebarMenuButton
               size="lg"
               className={cn(
-                "rounded-2xl text-slate-800 hover:bg-white/70 hover:text-slate-900 data-[state=open]:bg-cyan-50/80 data-[state=open]:text-slate-900",
+                "rounded-2xl text-slate-800 hover:bg-slate-50/95 hover:text-slate-950 data-[state=open]:bg-cyan-50/90 data-[state=open]:text-slate-950",
                 isCollapsed && "justify-center px-0"
               )}
             >
-              <Avatar className="h-9 w-9 rounded-2xl border border-white/50 bg-cyan-50">
+              <Avatar className="h-9 w-9 rounded-2xl border border-slate-200/80 bg-cyan-50">
                 <AvatarImage
                   src={user.avatar}
                   alt={fullName}
                 />
-                <AvatarFallback className="rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 font-semibold text-white">
+                <AvatarFallback className="rounded-2xl bg-gradient-to-br from-slate-900 via-cyan-700 to-sky-600 font-semibold text-white">
                   {fullName.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
@@ -84,19 +84,19 @@ export function NavUser({
           </DropdownMenuTrigger>
 
           <DropdownMenuContent
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-2xl border border-white/50 bg-white/85 shadow-2xl backdrop-blur-xl"
+            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-2xl border border-slate-200/80 bg-white/95 shadow-[0_24px_48px_-28px_rgba(15,23,42,0.28)] backdrop-blur-xl"
             side={isMobile ? "bottom" : "right"}
             align="end"
             sideOffset={8}
           >
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-3 px-3 py-3 text-left text-sm">
-                <Avatar className="h-9 w-9 rounded-2xl border border-white/50">
+                <Avatar className="h-9 w-9 rounded-2xl border border-slate-200/80">
                   <AvatarImage
                     src={user.avatar}
                     alt={fullName}
                   />
-                  <AvatarFallback className="rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 font-semibold text-white">
+                  <AvatarFallback className="rounded-2xl bg-gradient-to-br from-slate-900 via-cyan-700 to-sky-600 font-semibold text-white">
                     {fullName.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>

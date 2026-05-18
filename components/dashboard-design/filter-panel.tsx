@@ -26,6 +26,7 @@ interface FilterPanelProps {
 const selectAllValue = "ALL";
 const fieldClass =
   "h-11 rounded-[18px] border-slate-200 bg-white text-sm shadow-none transition-all placeholder:text-slate-400 focus-visible:border-cyan-500 focus-visible:ring-4 focus-visible:ring-cyan-500/10";
+const selectFieldClass = `w-full ${fieldClass} data-[size=default]:h-11`;
 const labelClass =
   "text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500";
 
@@ -128,11 +129,11 @@ export default function FilterPanel({
             value={filters.project || selectAllValue}
             onValueChange={(value) => handleInputChange("project", value)}
           >
-            <SelectTrigger className={`w-full ${fieldClass}`}>
+            <SelectTrigger className={selectFieldClass}>
               <SelectValue placeholder="Project" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={selectAllValue}>All Projects</SelectItem>
+              <SelectItem value={selectAllValue} >All Projects</SelectItem>
               {projects.map((project) => (
                 <SelectItem key={project.id} value={project.name}>
                   {project.name}
@@ -148,7 +149,7 @@ export default function FilterPanel({
             value={filters.companyId || selectAllValue}
             onValueChange={(value) => handleInputChange("companyId", value)}
           >
-            <SelectTrigger className={`w-full ${fieldClass}`}>
+            <SelectTrigger className={selectFieldClass}>
               <SelectValue placeholder="Company" />
             </SelectTrigger>
             <SelectContent>
@@ -168,7 +169,7 @@ export default function FilterPanel({
             value={filters.departmentId || selectAllValue}
             onValueChange={(value) => handleInputChange("departmentId", value)}
           >
-            <SelectTrigger className={`w-full ${fieldClass}`}>
+            <SelectTrigger className={selectFieldClass}>
               <SelectValue placeholder="Department" />
             </SelectTrigger>
             <SelectContent>
@@ -188,7 +189,7 @@ export default function FilterPanel({
             value={filters.workLocationId || selectAllValue}
             onValueChange={(value) => handleInputChange("workLocationId", value)}
           >
-            <SelectTrigger className={`w-full ${fieldClass}`}>
+            <SelectTrigger className={selectFieldClass}>
               <SelectValue placeholder="Work Location" />
             </SelectTrigger>
             <SelectContent>
@@ -208,7 +209,7 @@ export default function FilterPanel({
             value={filters.jobRoleId || selectAllValue}
             onValueChange={(value) => handleInputChange("jobRoleId", value)}
           >
-            <SelectTrigger className={`w-full ${fieldClass}`}>
+            <SelectTrigger className={selectFieldClass}>
               <SelectValue placeholder="Job Role" />
             </SelectTrigger>
             <SelectContent>
@@ -250,7 +251,7 @@ export default function FilterPanel({
             value={filters.status || selectAllValue}
             onValueChange={(value) => handleInputChange("status", value)}
           >
-            <SelectTrigger className={`w-full ${fieldClass}`}>
+            <SelectTrigger className={selectFieldClass}>
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>

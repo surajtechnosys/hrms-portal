@@ -469,18 +469,18 @@ export function AppSidebar({
   return (
     <Sidebar
       collapsible="icon"
-      className="z-100 border-r border-white/40 bg-transparent shadow-none"
+      className="z-100 border-r border-slate-200/60 bg-transparent shadow-none"
       {...props}
     >
-      <div className="pointer-events-none absolute inset-x-2 top-2 h-32 rounded-[1.75rem] bg-gradient-to-br from-cyan-400/20 via-sky-400/10 to-transparent blur-2xl" />
+      <div className="pointer-events-none absolute inset-x-3 top-3 h-36 rounded-[2rem] bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.18),transparent_52%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.12),transparent_45%)] blur-2xl" />
 
-      <SidebarHeader className="relative z-10 border-b border-white/40 px-3 py-3">
+      <SidebarHeader className="relative z-10 border-b border-slate-200/75 px-3 py-3">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
               className={cn(
-                "h-auto rounded-[1.4rem] p-2.5 transition-all duration-200 hover:bg-white/70",
+                "h-auto rounded-[1.5rem] p-2.5 transition-all duration-200 hover:bg-slate-50/95",
                 isCollapsed && "justify-center p-2"
               )}
             >
@@ -497,11 +497,11 @@ export function AppSidebar({
                       alt={companyName}
                       width={44}
                       height={44}
-                      className="shrink-0 rounded-2xl border border-white/50 object-cover shadow-sm"
+                      className="shrink-0 rounded-2xl border border-slate-200/80 object-cover shadow-sm"
                       onError={() => setFailedLogoSrc(logoSrc)}
                     />
                   ) : (
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 via-sky-500 to-blue-600 text-sm font-semibold text-white shadow-lg shadow-cyan-500/20">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-900 via-cyan-700 to-sky-600 text-sm font-semibold text-white shadow-[0_16px_28px_-18px_rgba(8,145,178,0.65)]">
                       {companyName.charAt(0).toUpperCase()}
                     </div>
                   )}
@@ -512,10 +512,10 @@ export function AppSidebar({
                       isCollapsed && "hidden"
                     )}
                   >
-                    <span className="block truncate text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-700/80">
+                    <span className="block truncate text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-700/90">
                       {roleLabel}
                     </span>
-                    <span className="block truncate text-sm font-semibold text-slate-900">
+                    <span className="block truncate text-sm font-semibold text-slate-950">
                       {companyName}
                     </span>
                   </div>
@@ -530,7 +530,7 @@ export function AppSidebar({
 
       <SidebarContent className="relative z-10 space-y-3 p-2">
         <div className="px-2 pt-1 group-data-[collapsible=icon]:hidden">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500/90">
             Navigation
           </p>
         </div>
@@ -549,10 +549,10 @@ export function AppSidebar({
                         size="lg"
                         className={cn(
                           `
-                        rounded-[1.25rem] cursor-pointer transition-all duration-200
+                        rounded-[1.35rem] cursor-pointer transition-all duration-200
                         ${pathname === group.url
-                            ? "bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25"
-                            : "text-slate-700 hover:bg-white/70 hover:text-slate-900"
+                            ? "bg-gradient-to-r from-slate-900 via-cyan-700 to-sky-600 text-white shadow-[0_18px_34px_-20px_rgba(8,145,178,0.6)]"
+                            : "text-slate-700 hover:bg-slate-50/95 hover:text-slate-950"
                           }
                       `,
                           isCollapsed && "justify-center px-0"
@@ -570,8 +570,8 @@ export function AppSidebar({
                               `
                               flex aspect-square size-9 items-center justify-center rounded-2xl
                               ${pathname === group.url
-                                ? "bg-white/20 text-white"
-                                : "border border-white/50 bg-white/55 text-cyan-700"
+                                ? "bg-white/14 text-white ring-1 ring-white/18"
+                                : "border border-slate-200/80 bg-white text-cyan-700 shadow-sm"
                               }
                             `,
                               isCollapsed && "size-10"
@@ -586,13 +586,13 @@ export function AppSidebar({
                             )}
                           >
                             <span className="truncate">{group.name}</span>
-                            {pathname === group.url ? <span className="h-2 w-2 rounded-full bg-white/80" /> : null}
+                            {pathname === group.url ? <span className="h-2 w-2 rounded-full bg-white/85" /> : null}
                           </div>
                         </Link>
                       </SidebarMenuButton>
                     </TooltipTrigger>
                     {isCollapsed && (
-                      <TooltipContent side="right" className="border-0 bg-slate-900 text-white">
+                      <TooltipContent side="right" className="border-0 bg-slate-900 text-white shadow-xl">
                         {group.name}
                       </TooltipContent>
                     )}
@@ -604,7 +604,7 @@ export function AppSidebar({
         )}
       </SidebarContent>
 
-      <SidebarFooter className="relative z-10 border-t border-white/40 p-2">
+      <SidebarFooter className="relative z-10 border-t border-slate-200/75 p-2">
         <div className="glass-panel rounded-2xl">
           <NavUser user={navUser} />
         </div>

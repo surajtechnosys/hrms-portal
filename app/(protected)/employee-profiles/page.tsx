@@ -1,10 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { getEmployeeProfiles } from "@/lib/actions/employee-profiles";
+import { getEmployeeProfileOptions } from "@/lib/actions/employee-profiles";
 import { isCurrentEmployeeHr } from "@/lib/employee-job-role";
 import { getRoutePermissions } from "@/lib/rbac";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import EmployeeProfileDataTable from "./employee-profile-data-table";
+import DashboardDesignContent from "../dashboard-design/content";
 
 const EmployeeProfilePage = async () => {
   const route = "/employee-profiles";
@@ -25,21 +26,30 @@ const EmployeeProfilePage = async () => {
     redirect("/404");
   }
 
-  const records = await getEmployeeProfiles();
+  const [employees, options] = await Promise.all([
+    getEmployeeProfiles(),
+    getEmployeeProfileOptions(),
+  ]);
 
   return (
-    <EmployeeProfileDataTable
-      data={records}
-      canEdit={permissions.canEdit}
-      canDelete={permissions.canDelete}
+    <DashboardDesignContent
+      initialEmployees={employees}
+      companies={options.companies}
+      departments={options.departments}
+      jobRoles={options.jobRoles}
+      workLocations={options.workLocations}
+      projects={options.projects}
+      eyebrow="Employee Search"
       title="Employee Profiles"
-      actions={
-        permissions.canCreate && (
-          <Button asChild className="bg-blue-500 hover:bg-blue-600">
-            <Link href="/employee-profiles/create">Add Employee Profile</Link>
-          </Button>
-        )
-      }
+      description="Search, filter, and open employee profiles from a single directory view."
+      actions={permissions.canCreate ? (
+        <Button
+          asChild
+          className="rounded-2xl bg-cyan-700 px-5 text-white shadow-sm hover:bg-cyan-800"
+        >
+          <Link href="/employee-profiles/create">Add Employee Profile</Link>
+        </Button>
+      ) : undefined}
     />
   );
 };
