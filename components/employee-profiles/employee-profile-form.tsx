@@ -3,15 +3,17 @@
 import { Status } from "@prisma/client";
 import {
   createEmployeeProfile,
-  getNextEmployeeCodePreview,
   getEmployeeProfileOptions,
+  getNextEmployeeCodePreview,
   updateEmployeeProfile,
 } from "@/lib/actions/employee-profiles";
+import { getApplicantDocumentOptionsForEmployeeCreation } from "@/lib/actions/employee-documents";
+import { getRecruitmentApplicationById } from "@/lib/actions/recruitment";
 import { employeeProfileDefaultValues } from "@/lib/constants";
 import { employeeProfileSchema } from "@/lib/validators";
-import { EmployeeProfile } from "@/types";
+import { EmployeeProfile, RecruitmentApplication } from "@/types";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, FileCheck2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useEffect } from "react";
 import { SubmitHandler, useForm } from "react-hook-form";
@@ -40,6 +42,7 @@ import { Textarea } from "../ui/textarea";
 type Props = {
   data?: EmployeeProfile;
   update: boolean;
+  initialRecruitmentId?: string;
 };
 
 type Option = {
@@ -58,6 +61,17 @@ type ManagerOption = {
   employeeCode: string;
 };
 
+type ApplicantDocumentOption = {
+  id: string;
+  applicantId: string;
+  requestId: string;
+  candidateName: string;
+  mobileNumber: string;
+  email: string;
+  reviewStatus: string;
+  linkedEmployeeId: string;
+};
+
 const NONE_VALUE = "none";
 const EXISTING_PASSWORD_SENTINEL = "__KEEP__";
 const PASSWORD_MASK = "********";
@@ -68,7 +82,11 @@ const fieldClass =
 const textAreaClass =
   "min-h-28 w-full rounded-2xl border border-slate-200/80 bg-white shadow-sm transition-all duration-200 hover:border-cyan-300 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-100 outline-none";
 
-const EmployeeProfileForm = ({ data, update }: Props) => {
+const EmployeeProfileForm = ({
+  data,
+  update,
+  initialRecruitmentId,
+}: Props) => {
   const router = useRouter();
   const id = data?.id;
 
@@ -77,11 +95,16 @@ const EmployeeProfileForm = ({ data, update }: Props) => {
   const [jobRoles, setJobRoles] = React.useState<Option[]>([]);
   const [workLocations, setWorkLocations] = React.useState<Option[]>([]);
   const [companies, setCompanies] = React.useState<CompanyOption[]>([]);
+  const [applicantDocuments, setApplicantDocuments] = React.useState<
+    ApplicantDocumentOption[]
+  >([]);
+  const [selectedRecruitment, setSelectedRecruitment] =
+    React.useState<RecruitmentApplication | null>(null);
 
   const [isPending, startTransition] = React.useTransition();
 
   const form = useForm<z.infer<typeof employeeProfileSchema>>({
-    resolver: zodResolver(employeeProfileSchema) as any,
+    resolver: zodResolver(employeeProfileSchema),
     defaultValues: data ?? employeeProfileDefaultValues,
   });
 
@@ -99,6 +122,7 @@ const EmployeeProfileForm = ({ data, update }: Props) => {
       setJobRoles(options.jobRoles);
       setWorkLocations(options.workLocations);
     });
+    getApplicantDocumentOptionsForEmployeeCreation().then(setApplicantDocuments);
 
     if (!update) {
       getNextEmployeeCodePreview().then((code) => {
@@ -106,6 +130,37 @@ const EmployeeProfileForm = ({ data, update }: Props) => {
       });
     }
   }, [form, update]);
+
+  useEffect(() => {
+    if (!initialRecruitmentId || update) {
+      return;
+    }
+
+    getRecruitmentApplicationById(initialRecruitmentId).then((result) => {
+      if (!result.success || !result.data) {
+        return;
+      }
+
+      setSelectedRecruitment(result.data);
+      form.setValue("employeeName", result.data.candidateName || "");
+      form.setValue("email", result.data.email || "");
+      form.setValue("phone", result.data.mobileNumber || "");
+    });
+  }, [form, initialRecruitmentId, update]);
+
+  useEffect(() => {
+    if (!initialRecruitmentId || update || !applicantDocuments.length) {
+      return;
+    }
+
+    const linkedApplicantDocument = applicantDocuments.find(
+      (item) => item.applicantId === initialRecruitmentId,
+    );
+
+    if (linkedApplicantDocument) {
+      form.setValue("sourceApplicantDocumentId", linkedApplicantDocument.id);
+    }
+  }, [applicantDocuments, form, initialRecruitmentId, update]);
 
   const onSubmit: SubmitHandler<z.infer<typeof employeeProfileSchema>> = async (
     values,
@@ -140,6 +195,91 @@ const EmployeeProfileForm = ({ data, update }: Props) => {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {!update && (
+          <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-5">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="rounded-2xl bg-cyan-100 p-2.5 text-cyan-700">
+                <FileCheck2 className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-slate-900">
+                  Recruitment Documentation
+                </h3>
+                <p className="text-sm text-slate-500">
+                  Choose an applicant document set if this employee is being created from recruitment.
+                </p>
+              </div>
+            </div>
+
+            {selectedRecruitment && (
+              <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                Creating employee profile for {selectedRecruitment.candidateName} from request {selectedRecruitment.requestId}.
+              </div>
+            )}
+
+            <div className="grid gap-5 md:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="sourceApplicantDocumentId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Applicant Document</FormLabel>
+
+                    <Select
+                      value={field.value || NONE_VALUE}
+                      onValueChange={(value) => {
+                        const nextValue = value === NONE_VALUE ? "" : value;
+                        const selected = applicantDocuments.find(
+                          (item) => item.id === nextValue,
+                        );
+
+                        field.onChange(nextValue);
+
+                        if (!selected) {
+                          return;
+                        }
+
+                        form.setValue("employeeName", selected.candidateName);
+                        if (selected.email) {
+                          form.setValue("email", selected.email);
+                        }
+                        if (selected.mobileNumber) {
+                          form.setValue("phone", selected.mobileNumber);
+                        }
+                      }}
+                    >
+                      <FormControl>
+                        <SelectTrigger className={fieldClass}>
+                          <SelectValue placeholder="Select applicant document" />
+                        </SelectTrigger>
+                      </FormControl>
+
+                      <SelectContent className="rounded-2xl border border-indigo-100">
+                        <SelectItem value={NONE_VALUE}>None</SelectItem>
+                        {applicantDocuments.map((item) => (
+                          <SelectItem
+                            key={item.id}
+                            value={item.id}
+                            disabled={!!item.linkedEmployeeId}
+                          >
+                            {item.candidateName} ({item.requestId}) - {item.reviewStatus}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600">
+                The selected applicant documents will be copied into the employee record automatically when this profile is created.
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Main Grid */}
         <div className="grid gap-5 md:grid-cols-2">
           <FormField

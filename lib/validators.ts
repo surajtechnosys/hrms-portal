@@ -11,6 +11,25 @@ import { z } from "zod";
 import { DOCUMENT_REVIEW_STATUSES } from "./document-review";
 
 const EOD_APPROVAL_STATUSES = ["PENDING", "APPROVED", "REJECTED"] as const;
+const employeeDocumentOwnerTypes = ["APPLICANT", "EMPLOYEE"] as const;
+const recruitmentBinaryStatuses = ["YES", "NO"] as const;
+const recruitmentTriStatuses = [
+  "YES",
+  "NO",
+  "NOT_APPLICABLE",
+] as const;
+const recruitmentPipelineStatuses = [
+  "PENDING",
+  "REJECTED",
+  "SELECTED",
+  "ON_HOLD",
+  "BACK_OUT",
+] as const;
+const recruitmentProfileSources = [
+  "INTERNAL",
+  "CONSULTANCY",
+  "OTHER",
+] as const;
 
 /* ---------------- AUTH ---------------- */
 export const loginFormSchema = z.object({
@@ -100,9 +119,17 @@ export const transferPromotionSchema = z.object({
 export const employeeDocumentSchema = z
   .object({
     id: z.string().optional(),
+    documentOwnerType: z.enum(employeeDocumentOwnerTypes).default("APPLICANT"),
 
-    employeeId: z.string().min(1, "Employee is required"),
-    employeeCode: z.string().min(1, "Employee ID is required"),
+    applicantId: z.string().optional(),
+    applicantCode: z.string().optional(),
+    candidateName: z.string().optional(),
+    employeeId: z.string().optional(),
+    employeeCode: z.string().optional(),
+    employeeName: z.string().optional(),
+    linkedEmployeeId: z.string().optional(),
+    linkedEmployeeCode: z.string().optional(),
+    linkedEmployeeName: z.string().optional(),
 
     // ---------------- DOCUMENTS ----------------
     aadhaarNumber: z.string().min(1, "Aadhaar number is required"),
@@ -143,7 +170,7 @@ export const employeeDocumentSchema = z
     // ---------------- COMMON ----------------
     reviewStatus: z.enum(DOCUMENT_REVIEW_STATUSES).optional(),
     reviewRemark: z.string().optional(),
-    reviewedById: z.string().optional(),
+    reviewedByName: z.string().optional(),
     reviewedAt: z.string().nullable().optional(),
     remark: z.string().optional(),
     status: z.nativeEnum(Status),
@@ -151,6 +178,32 @@ export const employeeDocumentSchema = z
     updatedAt: z.string().nullable().optional(),
   })
   .superRefine((data, ctx) => {
+    if (data.documentOwnerType === "APPLICANT") {
+      if (!data.applicantId?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Applicant is required",
+          path: ["applicantId"],
+        });
+      }
+
+      if (!data.applicantCode?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Request ID is required",
+          path: ["applicantCode"],
+        });
+      }
+
+      if (!data.candidateName?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Candidate name is required",
+          path: ["candidateName"],
+        });
+      }
+    }
+
     // Education validation
     data.educationEntries?.forEach((entry, index) => {
       if (!entry.degree?.trim()) {
@@ -206,6 +259,7 @@ export const employeeDocumentSchema = z
 /* ---------------- EMPLOYEE PROFILE ---------------- */
 export const employeeProfileSchema = z.object({
   id: z.string().optional(),
+  sourceApplicantDocumentId: z.string().optional(),
   managerId: z.union([z.string().uuid(), z.literal("")]).optional(),
   employeeName: z.string().trim().min(1, "Employee name is required"),
   employeeCode: z.string().optional(),
@@ -288,6 +342,73 @@ export const employerSchema = z.object({
 
 export const createEmployerSchema = employerSchema.extend({
   password: z.string().min(6, "Password should be at least 6 characters long"),
+});
+
+/* ---------------- RECRUITMENT ---------------- */
+export const recruitmentSchema = z.object({
+  id: z.string().optional(),
+  applicantPortalId: z.string().optional(),
+  applicantUsername: z.string().optional(),
+  applicantPasswordHash: z.string().optional(),
+  applicantPortalEnabled: z.boolean().optional(),
+  applicantInvitedAt: z.string().nullable().optional(),
+  applicantDocumentsSubmittedAt: z.string().nullable().optional(),
+  serialNumber: z.string().optional(),
+  requestId: z.string().min(1, "Request ID is required"),
+  clientProjectName: z
+    .string()
+    .min(1, "Client / Project Name is required"),
+  requestReceivedDate: z.string().optional(),
+  requestApprovedBy: z.string().optional(),
+  hrOwnerEmployeeNumber: z.string().optional(),
+  hrOwnerName: z.string().optional(),
+  businessOwnerEmployeeNumber: z.string().optional(),
+  businessOwnerName: z.string().optional(),
+  candidateName: z.string().min(1, "Candidate Name is required"),
+  mobileNumber: z.string().min(1, "Mobile number is required"),
+  email: z.union([
+    z.string().email("Invalid email address"),
+    z.literal(""),
+  ]),
+  currentLocation: z.string().optional(),
+  preferredLocation: z.string().optional(),
+  noticePeriod: z.string().optional(),
+  qualification: z.string().optional(),
+  skillsLevel: z.string().optional(),
+  profilePost: z.string().min(1, "Profile / Post is required"),
+  certification: z.string().optional(),
+  totalExperience: z.string().optional(),
+  relevantExperience: z.string().optional(),
+  currentCompany: z.string().optional(),
+  currentCtc: z.string().optional(),
+  expectedCtc: z.string().optional(),
+  offeredCtc: z.string().optional(),
+  profileSource: z.enum(recruitmentProfileSources).optional(),
+  profileReceiveDate: z.string().optional(),
+  internalScreeningDate: z.string().optional(),
+  internalScreeningCleared: z.enum(recruitmentBinaryStatuses).optional(),
+  profileSentToBusinessOwner: z.enum(recruitmentTriStatuses).optional(),
+  profileSentToBusinessOwnerDate: z.string().optional(),
+  profileConnectWithClientDate: z.string().optional(),
+  interviewedByClient: z.enum(recruitmentTriStatuses).optional(),
+  clientInterviewDate: z.string().optional(),
+  feedbackDate: z.string().optional(),
+  internalStatus: z.enum(recruitmentPipelineStatuses).optional(),
+  clientFinalStatus: z.enum(recruitmentPipelineStatuses).optional(),
+  updatedToCandidateDate: z.string().optional(),
+  offeredDate: z.string().optional(),
+  offerAccepted: z.enum(recruitmentTriStatuses).optional(),
+  reasonIfOfferNotAccepted: z.string().optional(),
+  agreedJoiningDate: z.string().optional(),
+  joined: z.enum(recruitmentTriStatuses).optional(),
+  reasonIfNotJoined: z.string().optional(),
+  actualJoiningDate: z.string().optional(),
+  joiningDetailsShared: z.enum(recruitmentTriStatuses).optional(),
+  joiningDetailsSharedDate: z.string().optional(),
+  remarks: z.string().optional(),
+  status: z.nativeEnum(Status),
+  createdAt: z.string().nullable().optional(),
+  updatedAt: z.string().nullable().optional(),
 });
 
 /* ---------------- CONFIGURATION ---------------- */

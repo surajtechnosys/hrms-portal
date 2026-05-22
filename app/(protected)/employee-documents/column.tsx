@@ -20,12 +20,22 @@ export const getEmployeeDocumentColumns = ({
 }): ColumnDef<EmployeeDocument>[] => {
   const columns: ColumnDef<EmployeeDocument>[] = [
     {
-      accessorKey: "employeeName",
-      header: "Employee",
+      id: "ownerName",
+      header: "Name",
+      cell: ({ row }) =>
+        row.original.ownerName ||
+        row.original.employeeName ||
+        row.original.candidateName ||
+        "-",
     },
     {
-      accessorKey: "employeeCode",
-      header: "Employee ID",
+      id: "ownerCode",
+      header: "Code / Request ID",
+      cell: ({ row }) =>
+        row.original.ownerCode ||
+        row.original.employeeCode ||
+        row.original.applicantCode ||
+        "-",
     },
     {
       accessorKey: "experienceType",

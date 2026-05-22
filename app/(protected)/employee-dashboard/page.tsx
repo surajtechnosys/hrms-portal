@@ -806,10 +806,11 @@ export default async function EmployeeDashboardPage({
                 { label: "Job Roles", href: "/job-roles" },
                 { label: "Work Location", href: "/work-location" },
                 { label: "Employee Documents", href: "/employee-documents" },
+                { label: "Recruitment", href: "/recruitment" },
                 { label: "Attendance", href: "/attendance" },
                 { label: "Leave Requests", href: "/leave-requests" },
                 { label: "Transfer & Promotion", href: "/transfer-promotion" },
-                { label: "HR Review Queue", href: "/employee-documents" },
+                { label: "Document Review Queue", href: "/employee-documents" },
               ].map((item) => (
                 <Link
                   key={item.label}
@@ -1083,13 +1084,6 @@ export default async function EmployeeDashboardPage({
                   >
                     <Plus className="h-4 w-4" />
                     Apply Leave
-                  </Link>
-                  <Link
-                    href="/employee-documents"
-                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700"
-                  >
-                    <FileText className="h-4 w-4" />
-                    My Documents
                   </Link>
                 </div>
               </div>
@@ -1714,26 +1708,15 @@ export default async function EmployeeDashboardPage({
                   My Documents
                 </h2>
                 <p className="text-sm text-slate-500">
-                  Add or update your identity, education, and experience
-                  records.
+                  Upload and track the documents linked to your employee profile.
                 </p>
               </div>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
               <Link
                 href="/employee-documents/create?from=employee-dashboard"
-                className="inline-flex h-10 items-center gap-2 rounded-lg bg-cyan-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-cyan-700"
+                className="inline-flex items-center gap-2 rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-cyan-700"
               >
                 <Plus className="h-4 w-4" />
-                Add Document
-              </Link>
-              <Link
-                href="/employee-documents"
-                className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-              >
-                View All
-                <ChevronRight className="h-4 w-4" />
+                Upload document
               </Link>
             </div>
           </div>
@@ -1755,14 +1738,14 @@ export default async function EmployeeDashboardPage({
                       </p>
                     </div>
                     <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-700">
-                      {document.status}
+                      {document.reviewStatus}
                     </span>
                   </div>
 
                   <div className="mt-4 space-y-1 text-sm text-slate-600">
                     <p>Aadhaar: {document.aadhaarNumber || "-"}</p>
                     <p>PAN: {document.panNumber || "-"}</p>
-                    <p>Review: {document.reviewStatus}</p>
+                    <p>Status: {document.status}</p>
                     <p>Remark: {document.reviewRemark || "-"}</p>
                   </div>
 
@@ -1770,14 +1753,13 @@ export default async function EmployeeDashboardPage({
                     href={`/employee-documents/edit/${document.id}`}
                     className="mt-4 inline-flex text-sm font-medium text-cyan-700 hover:text-cyan-800"
                   >
-                    Update document
+                    Open document
                   </Link>
                 </div>
               ))
             ) : (
               <div className="rounded-lg border border-dashed border-slate-300 p-5 text-sm text-slate-500 md:col-span-2 xl:col-span-3">
-                No documents added yet. Add your first document to complete
-                your employee records.
+                No documents uploaded yet. Use the upload button to add your identity, education, and experience records.
               </div>
             )}
           </div>

@@ -5,7 +5,7 @@ import {
   createEmployeeDocument,
   updateEmployeeDocument,
 } from "@/lib/actions/employee-documents";
-import { getEmployeeProfileSelectOptions } from "@/lib/actions/employee-profiles";
+import { getRecruitmentApplicantOptions } from "@/lib/actions/recruitment";
 import { employeeDocumentDefaultValues } from "@/lib/constants";
 import { employeeDocumentSchema } from "@/lib/validators";
 import { EmployeeDocument } from "@/types";
@@ -56,14 +56,15 @@ import { Textarea } from "../ui/textarea";
 type Props = {
   data?: EmployeeDocument;
   update: boolean;
-  currentEmployee?: EmployeeOption | null;
   redirectTo?: string;
+  mode?: "applicant" | "applicant-self" | "employee";
 };
 
-type EmployeeOption = {
+type ApplicantOption = {
   id: string;
-  employeeName: string;
-  employeeCode: string;
+  candidateName: string;
+  requestId: string;
+  profilePost: string;
 };
 
 const fieldClass =
@@ -124,15 +125,13 @@ const readFileAsDataUrl = (file: File) =>
 const EmployeeDocumentForm = ({
   data,
   update,
-  currentEmployee,
   redirectTo = "/employee-documents",
+  mode = "applicant",
 }: Props) => {
   const router = useRouter();
   const id = data?.id;
 
-  const [employees, setEmployees] = React.useState<EmployeeOption[]>(
-    currentEmployee ? [currentEmployee] : []
-  );
+  const [applicants, setApplicants] = React.useState<ApplicantOption[]>([]);
   const [isPending, startTransition] = React.useTransition();
 
   const form = useForm<InputType, unknown, OutputType>({
@@ -140,8 +139,6 @@ const EmployeeDocumentForm = ({
     defaultValues: (data ??
       {
         ...employeeDocumentDefaultValues,
-        employeeId: currentEmployee?.id ?? "",
-        employeeCode: currentEmployee?.employeeCode ?? "",
       }) as InputType,
   });
 
@@ -170,24 +167,10 @@ const EmployeeDocumentForm = ({
   });
 
   useEffect(() => {
-    if (currentEmployee || data) {
-      return;
+    if (mode === "applicant") {
+      getRecruitmentApplicantOptions().then(setApplicants);
     }
-
-    getEmployeeProfileSelectOptions().then(setEmployees);
-  }, [currentEmployee, data]);
-
-  useEffect(() => {
-    if (!currentEmployee || data) {
-      return;
-    }
-
-    form.reset({
-      ...form.getValues(),
-      employeeId: currentEmployee.id,
-      employeeCode: currentEmployee.employeeCode,
-    });
-  }, [currentEmployee, data, form]);
+  }, [mode]);
 
   useEffect(() => {
     if (data) form.reset(data);
@@ -313,97 +296,115 @@ const EmployeeDocumentForm = ({
         onSubmit={form.handleSubmit(onSubmit)}
         className="space-y-6"
       >
-        {/* Employee */}
-        <div className={cardClass}>
-          <div className="flex items-center gap-2">
-            <User className="h-5 w-5 text-cyan-500" />
-            <h3 className="text-lg font-semibold text-slate-800">
-              Employee Details
-            </h3>
-          </div>
+        {mode === "applicant" ? (
+          <div className={cardClass}>
+            <div className="flex items-center gap-2">
+              <User className="h-5 w-5 text-cyan-500" />
+              <h3 className="text-lg font-semibold text-slate-800">
+                Applicant Details
+              </h3>
+            </div>
 
-          <div className="grid gap-5 md:grid-cols-2">
-            <FormField
-              control={form.control}
-              name="employeeId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Employee Name
-                  </FormLabel>
+            <div className="grid gap-5 md:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="applicantId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Applicant Name
+                    </FormLabel>
 
-                  <Select
-                    disabled={!!currentEmployee}
-                    value={field.value ?? ""}
-                    onValueChange={(value) => {
-                      const selected =
-                        employees.find(
-                          (e) =>
-                            e.id === value
+                    <Select
+                      value={field.value ?? ""}
+                      onValueChange={(value) => {
+                        const selected = applicants.find((e) => e.id === value);
+
+                        field.onChange(value);
+
+                        form.setValue("applicantCode", selected?.requestId ?? "");
+                        form.setValue(
+                          "candidateName",
+                          selected?.candidateName ?? "",
                         );
+                      }}
+                    >
+                      <FormControl>
+                        <SelectTrigger className={fieldClass}>
+                          <SelectValue placeholder="Select applicant" />
+                        </SelectTrigger>
+                      </FormControl>
 
-                      field.onChange(value);
+                      <SelectContent className="rounded-2xl border border-slate-200 shadow-xl">
+                        {applicants.map((e) => (
+                          <SelectItem key={e.id} value={e.id}>
+                            {e.candidateName} - {e.profilePost}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
 
-                      form.setValue(
-                        "employeeCode",
-                        selected?.employeeCode ??
-                          ""
-                      );
-                    }}
-                  >
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="applicantCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Request ID
+                    </FormLabel>
                     <FormControl>
-                      <SelectTrigger
-                        className={
-                          fieldClass
-                        }
-                      >
-                        <SelectValue placeholder="Select employee" />
-                      </SelectTrigger>
+                      <Input
+                        readOnly
+                        className={fieldClass}
+                        {...field}
+                        value={field.value ?? ""}
+                      />
                     </FormControl>
+                  </FormItem>
+                )}
+              />
 
-                    <SelectContent className="rounded-2xl border border-slate-200 shadow-xl">
-                      {employees.map((e) => (
-                        <SelectItem
-                          key={e.id}
-                          value={e.id}
-                        >
-                          {e.employeeName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="employeeCode"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Employee ID
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      readOnly
-                      className={
-                        fieldClass
-                      }
-                      {...field}
-                      value={
-                        field.value ??
-                        ""
-                      }
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="candidateName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Candidate Name</FormLabel>
+                    <FormControl>
+                      <Input
+                        readOnly
+                        className={fieldClass}
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className={cardClass}>
+            <div className="flex items-center gap-2">
+              <IdCard className="h-5 w-5 text-cyan-500" />
+              <h3 className="text-lg font-semibold text-slate-800">
+                {mode === "employee"
+                  ? "Employee Document Upload"
+                  : "Applicant Document Upload"}
+              </h3>
+            </div>
+            <p className="text-sm text-slate-500">
+              {mode === "employee"
+                ? "Upload your identity, education, and experience records here. HR can review them later from the employee profile."
+                : "Upload your identity, education, and experience records here so HR can complete your joining documentation."}
+            </p>
+          </div>
+        )}
 
         {/* Documents */}
         <div className={cardClass}>
@@ -848,8 +849,12 @@ const EmployeeDocumentForm = ({
           )}
 
           {update
-            ? "Update Employee Document"
-            : "Save Employee Document"}
+            ? mode === "employee"
+              ? "Update My Document"
+              : "Update Applicant Document"
+            : mode === "employee"
+              ? "Save My Document"
+              : "Save Applicant Document"}
         </Button>
       </form>
     </Form>

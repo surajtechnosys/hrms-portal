@@ -16,6 +16,7 @@ import {
   transferPromotionSchema,
   eodReportSchema,
   monthlyEodReviewSchema,
+  recruitmentSchema,
   userSchema,
   workLocationSchema,
   attendanceSchema,
@@ -39,6 +40,8 @@ export type Employer = z.infer<typeof employerSchema> & {
   companyName?: string;
 };
 
+export type RecruitmentApplication = z.infer<typeof recruitmentSchema>;
+
 export type WorkLocation = z.infer<typeof workLocationSchema>;
 
 export type TransferPromotion = z.infer<typeof transferPromotionSchema> & {
@@ -48,7 +51,9 @@ export type TransferPromotion = z.infer<typeof transferPromotionSchema> & {
 };
 
 export type EmployeeDocument = z.infer<typeof employeeDocumentSchema> & {
-  employeeName?: string;
+  applicantName?: string;
+  ownerName?: string;
+  ownerCode?: string;
   reviewedByName?: string;
 };
 

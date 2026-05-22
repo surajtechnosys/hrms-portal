@@ -85,16 +85,18 @@ export function EmployeeDocumentReviewSheet({
   onOpenChange,
   onReview,
 }: DocumentReviewSheetProps) {
-  const [remark, setRemark] = React.useState("");
-
-  React.useEffect(() => {
-    setRemark(document?.reviewRemark ?? "");
-  }, [document?.id, document?.reviewRemark, open]);
+  const [remarkByDocument, setRemarkByDocument] = React.useState<
+    Record<string, string>
+  >({});
 
   const status = document?.reviewStatus ?? "PENDING";
   const pending = status === "PENDING";
   const educationEntries = document?.educationEntries ?? [];
   const experienceEntries = document?.experienceEntries ?? [];
+  const activeRemark =
+    document?.id
+      ? (remarkByDocument[document.id] ?? document.reviewRemark ?? "")
+      : "";
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -102,7 +104,7 @@ export function EmployeeDocumentReviewSheet({
         <SheetHeader className="space-y-3 pr-10">
           <div className="flex flex-wrap items-center gap-3">
             <SheetTitle className="text-xl">
-              {document?.employeeName || "Employee Document"}
+              {document?.ownerName || document?.employeeName || document?.candidateName || "Document"}
             </SheetTitle>
             <Badge className={reviewBadgeClass(status)}>{status}</Badge>
           </div>
@@ -116,8 +118,24 @@ export function EmployeeDocumentReviewSheet({
           <div className="space-y-6 p-4 pt-0">
             <section className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 sm:grid-cols-2">
               <div>
-                <p className="text-slate-500">Employee ID</p>
-                <p className="mt-1 font-medium text-slate-900">{document.employeeCode}</p>
+                <p className="text-slate-500">
+                  {document.documentOwnerType === "EMPLOYEE"
+                    ? "Employee ID"
+                    : "Request ID"}
+                </p>
+                <p className="mt-1 font-medium text-slate-900">
+                  {document.ownerCode || document.employeeCode || document.applicantCode || "-"}
+                </p>
+              </div>
+              <div>
+                <p className="text-slate-500">
+                  {document.documentOwnerType === "EMPLOYEE"
+                    ? "Employee Name"
+                    : "Candidate Name"}
+                </p>
+                <p className="mt-1 font-medium text-slate-900">
+                  {document.ownerName || document.employeeName || document.candidateName || "-"}
+                </p>
               </div>
               <div>
                 <p className="text-slate-500">Experience Type</p>
@@ -131,6 +149,14 @@ export function EmployeeDocumentReviewSheet({
                   {document.reviewRemark || "-"}
                 </p>
               </div>
+              {document.documentOwnerType === "APPLICANT" && document.linkedEmployeeCode ? (
+                <div>
+                  <p className="text-slate-500">Linked Employee</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {document.linkedEmployeeName} ({document.linkedEmployeeCode})
+                  </p>
+                </div>
+              ) : null}
               <div>
                 <p className="text-slate-500">Last Updated</p>
                 <p className="mt-1 font-medium text-slate-900">
@@ -269,12 +295,19 @@ export function EmployeeDocumentReviewSheet({
                   Review note
                 </h3>
                 <p className="mt-1 text-sm text-slate-500">
-                  Add a short approval or rejection note for the employee.
+                  Add a short approval or rejection note for the applicant.
                 </p>
               </div>
               <Textarea
-                value={remark}
-                onChange={(event) => setRemark(event.target.value)}
+                value={activeRemark}
+                onChange={(event) => {
+                  if (!document?.id) return;
+
+                  setRemarkByDocument((current) => ({
+                    ...current,
+                    [document.id!]: event.target.value,
+                  }));
+                }}
                 placeholder="Write a review remark"
                 className="min-h-28 rounded-2xl"
                 disabled={!canReview || !pending || isSubmitting}
@@ -289,7 +322,9 @@ export function EmployeeDocumentReviewSheet({
               <Button
                 className="bg-emerald-600 hover:bg-emerald-700"
                 disabled={isSubmitting}
-                onClick={() => onReview(document.id!, "APPROVED", remark)}
+                onClick={() =>
+                  onReview(document.id!, "APPROVED", activeRemark)
+                }
               >
                 <Check className="mr-2 h-4 w-4" />
                 Approve
@@ -297,7 +332,9 @@ export function EmployeeDocumentReviewSheet({
               <Button
                 variant="destructive"
                 disabled={isSubmitting}
-                onClick={() => onReview(document.id!, "REJECTED", remark)}
+                onClick={() =>
+                  onReview(document.id!, "REJECTED", activeRemark)
+                }
               >
                 <X className="mr-2 h-4 w-4" />
                 Reject

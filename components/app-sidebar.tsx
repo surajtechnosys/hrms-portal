@@ -10,6 +10,7 @@ import {
   Building2,
   CalendarCheck,
   CalendarPlus,
+  ClipboardList,
   Search,
   FolderArchive,
   Gauge,
@@ -126,9 +127,14 @@ const menu: MenuGroup[] = [
         icon: <Briefcase size={18} />,
       },
       {
-        name: "Employee ID & Docs",
+        name: "Employee Documents",
         url: "/employee-documents",
         icon: <IdCard size={18} />,
+      },
+      {
+        name: "Recruitment",
+        url: "/recruitment",
+        icon: <ClipboardList size={18} />,
       },
       {
         name: "Transfer & Promotion",
@@ -249,6 +255,11 @@ function getMenuByRole(
           icon: <CalendarCheck size={18} />,
         },
         {
+          name: "Recruitment",
+          url: "/recruitment",
+          icon: <ClipboardList size={18} />,
+        },
+        {
           name: "Leave Requests",
           url: "/leave-requests",
           icon: <CalendarPlus size={18} />,
@@ -292,11 +303,6 @@ function getMenuByRole(
           name: "My Leave Requests",
           url: "/leave-requests/my",
           icon: <CalendarPlus size={18} />,
-        },
-        {
-          name: "My Documents",
-          url: "/employee-documents",
-          icon: <IdCard size={18} />,
         },
         {
           name: "My Task Tracking",

@@ -7,6 +7,52 @@ import { formatError } from "../utils";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { auth, signIn, signOut } from "@/auth";
 import bcrypt from "bcrypt";
+import { promises as fs } from "fs";
+import path from "path";
+
+type ApplicantLoginRecord = {
+  email?: string;
+  applicantPortalId?: string;
+  applicantUsername?: string;
+  applicantPasswordHash?: string;
+  applicantPortalEnabled?: boolean;
+  status?: string;
+};
+
+async function findApplicantForLogin(identifier: string) {
+  const dataFilePath = path.join(
+    process.cwd(),
+    "lib",
+    "data",
+    "recruitment-applications.json",
+  );
+
+  try {
+    const raw = await fs.readFile(dataFilePath, "utf8");
+    const parsed = JSON.parse(raw);
+    const records = Array.isArray(parsed) ? (parsed as ApplicantLoginRecord[]) : [];
+    const normalizedIdentifier = identifier.toLowerCase();
+
+    return (
+      records.find((record) => {
+        return (
+          record.status === "ACTIVE" &&
+          record.applicantPortalEnabled &&
+          !!record.applicantPasswordHash &&
+          [
+            record.applicantUsername,
+            record.applicantPortalId,
+            record.email,
+          ]
+            .filter(Boolean)
+            .some((value) => value?.toLowerCase() === normalizedIdentifier)
+        );
+      }) ?? null
+    );
+  } catch {
+    return null;
+  }
+}
 
 export async function getUsers() {
   return await prisma.user.findMany({
@@ -206,6 +252,18 @@ export async function loginFormUser(prevState: unknown, formData: FormData) {
       !!existingEmployer?.password &&
       (await bcrypt.compare(normalizedUser.password, existingEmployer.password));
 
+    const existingApplicant =
+      !userMatched && !employeeMatched && !employerMatched
+        ? await findApplicantForLogin(normalizedUser.username)
+        : null;
+
+    const applicantMatched =
+      !!existingApplicant?.applicantPasswordHash &&
+      (await bcrypt.compare(
+        normalizedUser.password,
+        existingApplicant.applicantPasswordHash,
+      ));
+
     await signIn("credentials", { ...normalizedUser, redirect: false });
     
     return {
@@ -218,6 +276,8 @@ export async function loginFormUser(prevState: unknown, formData: FormData) {
             ? "/employee-dashboard"
             : employerMatched
               ? "/dashboard"
+              : applicantMatched
+                ? "/applicant-dashboard"
           : "/dashboard",
     };
   } catch (error) {

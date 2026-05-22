@@ -28,6 +28,7 @@ interface DashboardDesignContentProps {
   title?: string;
   description?: string;
   actions?: React.ReactNode;
+  showFilters?: boolean;
 }
 
 const getDashboardStats = (employees: EmployeeProfile[]) => {
@@ -70,6 +71,7 @@ export default function DashboardDesignContent({
   title,
   description,
   actions,
+  showFilters = true,
 }: DashboardDesignContentProps) {
   const [employees, setEmployees] =
     useState<EmployeeProfile[]>(initialEmployees);
@@ -213,15 +215,17 @@ export default function DashboardDesignContent({
           </div>
         </section>
 
-        <FilterPanel
-          companies={companies}
-          departments={departments}
-          jobRoles={jobRoles}
-          workLocations={workLocations}
-          projects={projects}
-          onApplyFilters={handleApplyFilters}
-          onResetFilters={handleResetFilters}
-        />
+        {showFilters && (
+          <FilterPanel
+            companies={companies}
+            departments={departments}
+            jobRoles={jobRoles}
+            workLocations={workLocations}
+            projects={projects}
+            onApplyFilters={handleApplyFilters}
+            onResetFilters={handleResetFilters}
+          />
+        )}
         <EmployeeList employees={employees} isLoading={isLoading} />
       </div>
     </div>

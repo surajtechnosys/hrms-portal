@@ -4,6 +4,7 @@ import { Prisma, Status } from "@prisma/client";
 import { EmployeeProfile } from "@/types";
 import bcrypt from "bcrypt";
 import { revalidatePath } from "next/cache";
+import { attachApplicantDocumentToEmployeeProfile } from "./employee-documents";
 import { prisma } from "../prisma";
 import { formatError } from "../utils";
 import { employeeProfileSchema } from "../validators";
@@ -351,7 +352,7 @@ export async function createEmployeeProfile(
         : null;
 
     await prisma.$transaction(async (tx) => {
-      await tx.employeeProfile.create({
+      const employee = await tx.employeeProfile.create({
         data: {
           employeeName: record.employeeName.trim(),
           employeeCode,
@@ -386,10 +387,21 @@ export async function createEmployeeProfile(
           status: record.status,
         },
       });
+
+      if (record.sourceApplicantDocumentId) {
+        await attachApplicantDocumentToEmployeeProfile({
+          applicantDocumentId: record.sourceApplicantDocumentId,
+          employeeId: employee.id,
+          employeeCode: employee.employeeCode,
+          employeeName: employee.employeeName,
+          tx,
+        });
+      }
     });
 
     revalidatePath("/employee-profiles");
     revalidatePath("/employee-dashboard");
+    revalidatePath("/employee-documents");
 
     return {
       success: true,
