@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { ArrowLeft, UserPlus } from "lucide-react";
-import { redirect } from "next/navigation";
+import { ArrowLeft, FilePenLine } from "lucide-react";
+import { notFound, redirect } from "next/navigation";
 
-import RecruitmentForm from "@/components/recruitment/recruitment-form";
+import RecruitmentIntakeForm from "@/components/recruitment-intake/recruitment-intake-form";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,28 +10,26 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getRecruitmentApplications } from "@/lib/actions/recruitment";
+import { getRecruitmentIntakeById } from "@/lib/actions/recruitment-intake";
 import { canAccess } from "@/lib/rbac";
 
-function getNextSerialNumber(records: Awaited<ReturnType<typeof getRecruitmentApplications>>) {
-  return String(
-    records.reduce((max, record) => {
-      const value = Number.parseInt(record.serialNumber ?? "", 10);
-      return Number.isFinite(value) ? Math.max(max, value) : max;
-    }, 0) + 1,
-  );
-}
+const RecruitmentIntakeEditPage = async ({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) => {
+  const { id } = await params;
+  const canEdit = await canAccess("/recruitment-intake", "edit");
 
-const RecruitmentCreatePage = async () => {
-  const route = "/recruitment";
-  const canCreate = await canAccess(route, "create");
-
-  if (!canCreate) {
+  if (!canEdit) {
     redirect("/404");
   }
 
-  const records = await getRecruitmentApplications();
-  const nextSerialNumber = getNextSerialNumber(records);
+  const result = await getRecruitmentIntakeById(id);
+
+  if (!result.success || !result.data) {
+    notFound();
+  }
 
   return (
     <Card className="rounded-3xl border border-white/60 bg-white/80 shadow-xl backdrop-blur-md">
@@ -39,15 +37,15 @@ const RecruitmentCreatePage = async () => {
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-cyan-500 text-white shadow-md">
-              <UserPlus size={20} />
+              <FilePenLine size={20} />
             </div>
 
             <div>
               <CardTitle className="text-2xl font-bold text-slate-800">
-                Add Candidate
+                Edit Recruitment
               </CardTitle>
               <p className="mt-1 text-sm text-slate-500">
-                Create a pre-onboarding record using the shared candidate screening format
+                Update the applicant details and resume PDF.
               </p>
             </div>
           </div>
@@ -56,7 +54,7 @@ const RecruitmentCreatePage = async () => {
             asChild
             className="rounded-2xl bg-gradient-to-r from-indigo-600 to-cyan-500 px-5 text-white shadow-md transition-all hover:scale-[1.02] hover:shadow-lg"
           >
-            <Link href="/recruitment">
+            <Link href="/recruitment-intake">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back
             </Link>
@@ -65,10 +63,10 @@ const RecruitmentCreatePage = async () => {
       </CardHeader>
 
       <CardContent className="pt-6">
-        <RecruitmentForm update={false} nextSerialNumber={nextSerialNumber} />
+        <RecruitmentIntakeForm data={result.data} update />
       </CardContent>
     </Card>
   );
 };
 
-export default RecruitmentCreatePage;
+export default RecruitmentIntakeEditPage;

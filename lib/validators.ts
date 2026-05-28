@@ -30,6 +30,14 @@ const recruitmentProfileSources = [
   "CONSULTANCY",
   "OTHER",
 ] as const;
+const recruitmentIntakeSources = [
+  "LINKEDIN",
+  "REFERRAL",
+  "NAUKRI",
+  "WEBSITE",
+  "WALK_IN",
+  "OTHER",
+] as const;
 
 /* ---------------- AUTH ---------------- */
 export const loginFormSchema = z.object({
@@ -354,10 +362,8 @@ export const recruitmentSchema = z.object({
   applicantInvitedAt: z.string().nullable().optional(),
   applicantDocumentsSubmittedAt: z.string().nullable().optional(),
   serialNumber: z.string().optional(),
-  requestId: z.string().min(1, "Request ID is required"),
-  clientProjectName: z
-    .string()
-    .min(1, "Client / Project Name is required"),
+  requestId: z.string().optional(),
+  clientProjectName: z.string().optional(),
   requestReceivedDate: z.string().optional(),
   requestApprovedBy: z.string().optional(),
   hrOwnerEmployeeNumber: z.string().optional(),
@@ -365,6 +371,8 @@ export const recruitmentSchema = z.object({
   businessOwnerEmployeeNumber: z.string().optional(),
   businessOwnerName: z.string().optional(),
   candidateName: z.string().min(1, "Candidate Name is required"),
+  gender: z.string().optional(),
+  dateOfBirth: z.string().optional(),
   mobileNumber: z.string().min(1, "Mobile number is required"),
   email: z.union([
     z.string().email("Invalid email address"),
@@ -407,6 +415,21 @@ export const recruitmentSchema = z.object({
   joiningDetailsSharedDate: z.string().optional(),
   remarks: z.string().optional(),
   status: z.nativeEnum(Status),
+  createdAt: z.string().nullable().optional(),
+  updatedAt: z.string().nullable().optional(),
+});
+
+/* ---------------- RECRUITMENT INTAKE ---------------- */
+export const recruitmentIntakeSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Invalid email address"),
+  phone: z.string().min(1, "Phone is required"),
+  resumeUrl: z.string().optional(),
+  skills: z.string().min(1, "Skills are required"),
+  experience: z.string().min(1, "Experience is required"),
+  appliedPosition: z.string().min(1, "Applied position is required"),
+  source: z.enum(recruitmentIntakeSources),
   createdAt: z.string().nullable().optional(),
   updatedAt: z.string().nullable().optional(),
 });

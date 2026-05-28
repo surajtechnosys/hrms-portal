@@ -43,10 +43,10 @@ const RecruitmentEditPage = async ({
 
             <div>
               <CardTitle className="text-2xl font-bold text-slate-800">
-                Edit Applicant
+                Edit Candidate
               </CardTitle>
               <p className="mt-1 text-sm text-slate-500">
-                Update applicant tracking details from the recruitment sheet
+                Update pre-onboarding tracking details from the candidate sheet
               </p>
             </div>
           </div>

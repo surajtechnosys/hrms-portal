@@ -73,6 +73,28 @@ type MenuGroup = {
   url?: string;
 };
 
+const onboardingMenuGroup: MenuGroup = {
+  name: "On-boarding",
+  icon: <ClipboardList size={18} />,
+  children: [
+    {
+      name: "Recruitment",
+      url: "/recruitment-intake",
+      icon: <Users2Icon size={18} />,
+    },
+    {
+      name: "Pre-Onboarding",
+      url: "/recruitment",
+      icon: <ClipboardList size={18} />,
+    },
+    {
+      name: "Employee Documents",
+      url: "/employee-documents",
+      icon: <IdCard size={18} />,
+    },
+  ],
+};
+
 function getRoleLabel(role?: SidebarRole, jobRole?: SidebarJobRole, isManager?: boolean) {
   if (role?.toLowerCase() === "employer") return "Employer Portal";
   if (role?.toLowerCase() === "employee") {
@@ -102,6 +124,7 @@ const menu: MenuGroup[] = [
       },
     ],
   },
+  onboardingMenuGroup,
   {
     name: "Employee Management",
     icon: <Users2Icon size={18} />,
@@ -125,16 +148,6 @@ const menu: MenuGroup[] = [
         name: "Work Location",
         url: "/work-location",
         icon: <Briefcase size={18} />,
-      },
-      {
-        name: "Employee Documents",
-        url: "/employee-documents",
-        icon: <IdCard size={18} />,
-      },
-      {
-        name: "Recruitment",
-        url: "/recruitment",
-        icon: <ClipboardList size={18} />,
       },
       {
         name: "Transfer & Promotion",
@@ -229,6 +242,7 @@ function getMenuByRole(
           url: "/employee-dashboard",
           icon: <Gauge size={18} />,
         },
+        onboardingMenuGroup,
         {
           name: "Employee Profiles",
           url: "/employee-profiles",
@@ -255,9 +269,9 @@ function getMenuByRole(
           icon: <CalendarCheck size={18} />,
         },
         {
-          name: "Recruitment",
-          url: "/recruitment",
-          icon: <ClipboardList size={18} />,
+          name: "Employee Documents",
+          url: "/employee-documents",
+          icon: <IdCard size={18} />,
         },
         {
           name: "Leave Requests",
@@ -279,11 +293,6 @@ function getMenuByRole(
           url: "/transfer-promotion",
           icon: <ArrowRightLeft size={18} />,
         },
-        {
-          name: "Employee Documents",
-          url: "/employee-documents",
-          icon: <IdCard size={18} />,
-        },
       ];
     }
 
@@ -294,6 +303,7 @@ function getMenuByRole(
           url: "/employee-dashboard",
           icon: <Gauge size={18} />,
         },
+        onboardingMenuGroup,
         {
           name: "My Attendance",
           url: "/attendance/my",
@@ -344,6 +354,7 @@ function getMenuByRole(
         url: "/employee-dashboard",
         icon: <Gauge size={18} />,
       },
+      onboardingMenuGroup,
       {
         name: "My Attendance",
         url: "/attendance/my",

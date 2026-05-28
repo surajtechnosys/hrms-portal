@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import RecruitmentDataTable from "./recruitment-data-table";
-import { Button } from "@/components/ui/button";
 import { getRecruitmentApplications } from "@/lib/actions/recruitment";
 import { isCurrentEmployeeHr } from "@/lib/employee-job-role";
 import { canAccess } from "@/lib/rbac";
@@ -38,12 +37,15 @@ const RecruitmentPage = async () => {
       canDelete={permissions.canDelete}
       canCreateEmployeeProfile={canCreateEmployeeProfile || isHrEmployee}
       canInviteApplicants={permissions.canCreate || permissions.canEdit}
-      title="Recruitment"
+      title="Pre-Onboarding"
       actions={
         permissions.canCreate && (
-          <Button asChild className="bg-blue-500 hover:bg-blue-600">
-            <Link href="/recruitment/create">Add Applicant</Link>
-          </Button>
+          <Link
+            href="/recruitment/create"
+            className="inline-flex h-10 items-center justify-center rounded-2xl bg-blue-500 px-4 text-sm font-medium text-white transition hover:bg-blue-600"
+          >
+            Create Pre-Onboarding
+          </Link>
         )
       }
     />

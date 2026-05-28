@@ -78,6 +78,15 @@ function getNextApplicantPortalNumber(records: RecruitmentApplication[]) {
   );
 }
 
+function getNextRecruitmentSerialNumber(records: RecruitmentApplication[]) {
+  return (
+    records.reduce((max, record) => {
+      const value = Number.parseInt(record.serialNumber ?? "", 10);
+      return Number.isFinite(value) ? Math.max(max, value) : max;
+    }, 0) + 1
+  );
+}
+
 function formatApplicantPortalId(value: number) {
   return `APP-${String(value).padStart(4, "0")}`;
 }
@@ -129,13 +138,6 @@ function ensureApplicantIdentities(records: RecruitmentApplication[]) {
   return { records: nextRecords, changed };
 }
 
-function isSelectedCandidate(record: RecruitmentApplication) {
-  return (
-    record.internalStatus === "SELECTED" ||
-    record.clientFinalStatus === "SELECTED"
-  );
-}
-
 function generateApplicantPassword() {
   return `App@${randomBytes(4).toString("hex")}`;
 }
@@ -151,11 +153,11 @@ function buildApplicantInviteEmail(input: {
   password: string;
 }) {
   const portalUrl = getApplicantPortalUrl();
-  const subject = `${APP_NAME} applicant document portal access`;
+  const subject = `${APP_NAME} pre-onboarding document portal access`;
   const text = [
     `Hello ${input.applicantName},`,
     "",
-    "You have been selected for the next step in the recruitment process.",
+    "You have been selected for the next step in the pre-onboarding process.",
     "Please log in to the applicant portal and submit your documents.",
     "",
     `Applicant ID: ${input.applicantPortalId}`,
@@ -168,7 +170,7 @@ function buildApplicantInviteEmail(input: {
   ].join("\n");
   const html = `
     <p>Hello ${input.applicantName},</p>
-    <p>You have been selected for the next step in the recruitment process. Please log in to the applicant portal and submit your documents.</p>
+    <p>You have been selected for the next step in the pre-onboarding process. Please log in to the applicant portal and submit your documents.</p>
     <p><strong>Applicant ID:</strong> ${input.applicantPortalId}</p>
     <p><strong>Username:</strong> ${input.applicantUsername}</p>
     <p><strong>Password:</strong> ${input.password}</p>
@@ -202,9 +204,11 @@ function normalizeRecruitmentApplication(
     applicantPortalEnabled: input.applicantPortalEnabled ?? false,
     applicantInvitedAt: input.applicantInvitedAt || "",
     applicantDocumentsSubmittedAt: input.applicantDocumentsSubmittedAt || "",
-    serialNumber: input.serialNumber?.trim() || "",
-    requestId: input.requestId.trim(),
-    clientProjectName: input.clientProjectName.trim(),
+    serialNumber:
+      input.serialNumber?.trim() ||
+      (input.id ? "" : String(getNextRecruitmentSerialNumber(records))),
+    requestId: input.requestId?.trim() || "",
+    clientProjectName: input.clientProjectName?.trim() || "",
     requestReceivedDate: input.requestReceivedDate || "",
     requestApprovedBy: input.requestApprovedBy?.trim() || "",
     hrOwnerEmployeeNumber: input.hrOwnerEmployeeNumber?.trim() || "",
@@ -286,7 +290,7 @@ export async function getRecruitmentApplicantOptions(): Promise<
 
   return records.map((item) => ({
     id: item.id ?? "",
-    requestId: item.requestId,
+    requestId: item.requestId || item.serialNumber || "",
     candidateName: item.candidateName,
     profilePost: item.profilePost,
   }));
@@ -307,7 +311,7 @@ export async function createRecruitmentApplication(
 
     return {
       success: true,
-      message: "Recruitment applicant created successfully",
+      message: "Pre-onboarding candidate created successfully",
     };
   } catch (error) {
     return {
@@ -325,14 +329,14 @@ export async function getRecruitmentApplicationById(id: string) {
     if (!record) {
       return {
         success: false,
-        message: "Recruitment applicant not found",
+        message: "Pre-onboarding candidate not found",
       };
     }
 
     return {
       success: true,
       data: record,
-      message: "Recruitment applicant fetched successfully",
+      message: "Pre-onboarding candidate fetched successfully",
     };
   } catch (error) {
     return {
@@ -395,7 +399,7 @@ export async function updateRecruitmentApplication(
     if (index === -1) {
       return {
         success: false,
-        message: "Recruitment applicant not found",
+        message: "Pre-onboarding candidate not found",
       };
     }
 
@@ -418,7 +422,7 @@ export async function updateRecruitmentApplication(
 
     return {
       success: true,
-      message: "Recruitment applicant updated successfully",
+      message: "Pre-onboarding candidate updated successfully",
     };
   } catch (error) {
     return {
@@ -439,18 +443,11 @@ export async function sendApplicantPortalInvite(
     if (index === -1) {
       return {
         success: false,
-        message: "Recruitment applicant not found",
+        message: "Pre-onboarding candidate not found",
       };
     }
 
     const applicant = ensureApplicantIdentity(records[index], records);
-
-    if (!isSelectedCandidate(applicant)) {
-      return {
-        success: false,
-        message: "Only selected candidates can receive applicant portal access",
-      };
-    }
 
     if (!applicant.email) {
       return {
@@ -489,7 +486,7 @@ export async function sendApplicantPortalInvite(
 
     return {
       success: true,
-      message: "Applicant portal access sent successfully",
+      message: "Pre-onboarding portal access sent successfully",
       data: nextRecord,
     };
   } catch (error) {
@@ -512,7 +509,7 @@ export async function deleteRecruitmentApplication(
 
     return {
       success: true,
-      message: "Recruitment applicant deleted successfully",
+      message: "Pre-onboarding candidate deleted successfully",
     };
   } catch (error) {
     return {

@@ -102,6 +102,10 @@ function isRecruitmentRoute(route: string) {
   return route === "/recruitment";
 }
 
+function isRecruitmentIntakeRoute(route: string) {
+  return route === "/recruitment-intake";
+}
+
 function isEmployeeDocumentsRoute(route: string) {
   return route === "/employee-documents";
 }
@@ -161,6 +165,14 @@ export async function canAccess(route: string, action: PermissionAction) {
   if (
     isEmployeeUser(user) &&
     isRecruitmentRoute(route) &&
+    (await isCurrentEmployeeHr())
+  ) {
+    return action !== "delete";
+  }
+
+  if (
+    isEmployeeUser(user) &&
+    isRecruitmentIntakeRoute(route) &&
     (await isCurrentEmployeeHr())
   ) {
     return action !== "delete";
@@ -235,6 +247,19 @@ export async function getRoutePermissions(route: string) {
   if (
     isEmployeeUser(user) &&
     isRecruitmentRoute(route) &&
+    (await isCurrentEmployeeHr())
+  ) {
+    return {
+      canView: true,
+      canCreate: true,
+      canEdit: true,
+      canDelete: false,
+    };
+  }
+
+  if (
+    isEmployeeUser(user) &&
+    isRecruitmentIntakeRoute(route) &&
     (await isCurrentEmployeeHr())
   ) {
     return {
@@ -327,6 +352,7 @@ export async function getAccessibleRoutes() {
     routes.add("/leave-requests");
     routes.add("/eod-reporting");
     routes.add("/dashboard-design");
+    routes.add("/recruitment-intake");
     routes.add("/project-tracking");
     routes.add("/recruitment");
     return Array.from(routes);
@@ -353,6 +379,7 @@ export async function getAccessibleRoutes() {
     routes.add("/employee-documents");
 
     if (await isCurrentEmployeeHr()) {
+      routes.add("/recruitment-intake");
       routes.add("/recruitment");
     }
 

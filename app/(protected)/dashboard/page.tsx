@@ -469,7 +469,8 @@ export default async function DashboardPage() {
     { label: "Departments", value: departments.length, href: "/department", icon: Building2 },
     { label: "Job Roles", value: jobRoles.length, href: "/job-roles", icon: BadgeCheck },
     { label: "Work Locations", value: workLocations.length, href: "/work-location", icon: MapPin },
-    { label: "Recruitment", value: "ATS", href: "/recruitment", icon: ClipboardList },
+    { label: "Recruitment", value: "Open", href: "/recruitment-intake", icon: Users },
+    { label: "Pre-Onboarding", value: "ATS", href: "/recruitment", icon: ClipboardList },
     { label: "Users", value: userCount, href: "/users", icon: UserCog },
     { label: "Configuration", value: "Open", href: "/configuration", icon: Settings },
   ];

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, UserPlus } from "lucide-react";
 import { redirect } from "next/navigation";
 
-import RecruitmentForm from "@/components/recruitment/recruitment-form";
+import RecruitmentIntakeForm from "@/components/recruitment-intake/recruitment-intake-form";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,28 +10,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getRecruitmentApplications } from "@/lib/actions/recruitment";
 import { canAccess } from "@/lib/rbac";
 
-function getNextSerialNumber(records: Awaited<ReturnType<typeof getRecruitmentApplications>>) {
-  return String(
-    records.reduce((max, record) => {
-      const value = Number.parseInt(record.serialNumber ?? "", 10);
-      return Number.isFinite(value) ? Math.max(max, value) : max;
-    }, 0) + 1,
-  );
-}
-
-const RecruitmentCreatePage = async () => {
-  const route = "/recruitment";
+const RecruitmentIntakeCreatePage = async () => {
+  const route = "/recruitment-intake";
   const canCreate = await canAccess(route, "create");
 
   if (!canCreate) {
     redirect("/404");
   }
-
-  const records = await getRecruitmentApplications();
-  const nextSerialNumber = getNextSerialNumber(records);
 
   return (
     <Card className="rounded-3xl border border-white/60 bg-white/80 shadow-xl backdrop-blur-md">
@@ -44,10 +31,10 @@ const RecruitmentCreatePage = async () => {
 
             <div>
               <CardTitle className="text-2xl font-bold text-slate-800">
-                Add Candidate
+                Add Recruitment
               </CardTitle>
               <p className="mt-1 text-sm text-slate-500">
-                Create a pre-onboarding record using the shared candidate screening format
+                Store applicant details and upload the resume PDF.
               </p>
             </div>
           </div>
@@ -56,7 +43,7 @@ const RecruitmentCreatePage = async () => {
             asChild
             className="rounded-2xl bg-gradient-to-r from-indigo-600 to-cyan-500 px-5 text-white shadow-md transition-all hover:scale-[1.02] hover:shadow-lg"
           >
-            <Link href="/recruitment">
+            <Link href="/recruitment-intake">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back
             </Link>
@@ -65,10 +52,10 @@ const RecruitmentCreatePage = async () => {
       </CardHeader>
 
       <CardContent className="pt-6">
-        <RecruitmentForm update={false} nextSerialNumber={nextSerialNumber} />
+        <RecruitmentIntakeForm update={false} />
       </CardContent>
     </Card>
   );
 };
 
-export default RecruitmentCreatePage;
+export default RecruitmentIntakeCreatePage;

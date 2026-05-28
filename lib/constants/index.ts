@@ -190,6 +190,8 @@ export const recruitmentDefaultValues = {
   businessOwnerEmployeeNumber: "",
   businessOwnerName: "",
   candidateName: "",
+  gender: "",
+  dateOfBirth: "",
   mobileNumber: "",
   email: "",
   currentLocation: "",

@@ -134,7 +134,7 @@ async function getCurrentDocumentContext(): Promise<CurrentDocumentContext> {
     currentApplicant: applicantRecord
       ? {
           id: applicantRecord.id ?? "",
-          applicantCode: applicantRecord.requestId,
+          applicantCode: applicantRecord.requestId || applicantRecord.serialNumber || "",
           candidateName: applicantRecord.candidateName,
         }
       : null,
@@ -847,7 +847,7 @@ export async function getRecruitmentApplicantOptions(): Promise<
 
   return records.map((item) => ({
     id: item.id ?? "",
-    requestId: item.requestId,
+    requestId: item.requestId || item.serialNumber || "",
     candidateName: item.candidateName,
     profilePost: item.profilePost,
   }));

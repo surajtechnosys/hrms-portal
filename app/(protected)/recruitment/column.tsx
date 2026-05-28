@@ -5,14 +5,6 @@ import { ColumnDef } from "@tanstack/react-table";
 import { EditIcon, Mail, Trash, UserPlus } from "lucide-react";
 import Link from "next/link";
 
-function statusBadgeClass(value?: string) {
-  if (value === "SELECTED") return "bg-emerald-500";
-  if (value === "ON_HOLD") return "bg-amber-500";
-  if (value === "BACK_OUT") return "bg-rose-500";
-  if (value === "REJECTED") return "bg-slate-500";
-  return "bg-cyan-500";
-}
-
 export const getRecruitmentColumns = ({
   canEdit,
   canDelete,
@@ -35,24 +27,31 @@ export const getRecruitmentColumns = ({
     {
       accessorKey: "serialNumber",
       header: "Sl. No.",
-      cell: ({ row }) => row.original.serialNumber || "-",
-    },
-    {
-      accessorKey: "requestId",
-      header: "Request ID",
-    },
-    {
-      accessorKey: "applicantPortalId",
-      header: "Applicant ID",
-      cell: ({ row }) => row.original.applicantPortalId || "-",
-    },
-    {
-      accessorKey: "clientProjectName",
-      header: "Client / Project Name",
+      cell: ({ row, table }) => {
+        const visibleIndex = table
+          .getRowModel()
+          .rows.findIndex((visibleRow) => visibleRow.id === row.id);
+        const pageIndex = table.getState().pagination.pageIndex;
+        const pageSize = table.getState().pagination.pageSize;
+
+        return visibleIndex >= 0
+          ? visibleIndex + 1 + pageIndex * pageSize
+          : row.original.serialNumber || "-";
+      },
     },
     {
       accessorKey: "candidateName",
       header: "Candidate Name",
+    },
+    {
+      accessorKey: "gender",
+      header: "Gender",
+      cell: ({ row }) => row.original.gender || "-",
+    },
+    {
+      accessorKey: "dateOfBirth",
+      header: "DOB",
+      cell: ({ row }) => row.original.dateOfBirth || "-",
     },
     {
       accessorKey: "mobileNumber",
@@ -69,84 +68,14 @@ export const getRecruitmentColumns = ({
       cell: ({ row }) => row.original.currentLocation || "-",
     },
     {
-      accessorKey: "preferredLocation",
-      header: "Preferred Location",
-      cell: ({ row }) => row.original.preferredLocation || "-",
-    },
-    {
-      accessorKey: "profilePost",
-      header: "Profile / Post",
-    },
-    {
-      accessorKey: "noticePeriod",
-      header: "NP",
-      cell: ({ row }) => row.original.noticePeriod || "-",
-    },
-    {
-      accessorKey: "totalExperience",
-      header: "Exp.",
-      cell: ({ row }) => row.original.totalExperience || "-",
-    },
-    {
-      accessorKey: "relevantExperience",
-      header: "Relevant Exp",
-      cell: ({ row }) => row.original.relevantExperience || "-",
-    },
-    {
-      accessorKey: "currentCompany",
-      header: "Current company",
-      cell: ({ row }) => row.original.currentCompany || "-",
+      accessorKey: "currentCtc",
+      header: "C.CTC",
+      cell: ({ row }) => row.original.currentCtc || "-",
     },
     {
       accessorKey: "expectedCtc",
       header: "E.CTC",
       cell: ({ row }) => row.original.expectedCtc || "-",
-    },
-    {
-      accessorKey: "internalStatus",
-      header: "Internal Status",
-      cell: ({ row }) =>
-        row.original.internalStatus ? (
-          <Badge className={statusBadgeClass(row.original.internalStatus)}>
-            {row.original.internalStatus.replaceAll("_", " ")}
-          </Badge>
-        ) : (
-          "-"
-        ),
-    },
-    {
-      accessorKey: "clientFinalStatus",
-      header: "Client Final Status",
-      cell: ({ row }) =>
-        row.original.clientFinalStatus ? (
-          <Badge className={statusBadgeClass(row.original.clientFinalStatus)}>
-            {row.original.clientFinalStatus.replaceAll("_", " ")}
-          </Badge>
-        ) : (
-          "-"
-        ),
-    },
-    {
-      accessorKey: "joined",
-      header: "Joined",
-      cell: ({ row }) => row.original.joined || "-",
-    },
-    {
-      accessorKey: "actualJoiningDate",
-      header: "Actual Joining Date",
-      cell: ({ row }) => row.original.actualJoiningDate || "-",
-    },
-    {
-      accessorKey: "applicantInvitedAt",
-      header: "Portal Invite",
-      cell: ({ row }) =>
-        row.original.applicantInvitedAt ? (
-          <Badge className="bg-emerald-500">SENT</Badge>
-        ) : row.original.applicantPortalEnabled ? (
-          <Badge className="bg-cyan-500">ACTIVE</Badge>
-        ) : (
-          <Badge className="bg-slate-500">NOT SENT</Badge>
-        ),
     },
     {
       accessorKey: "applicantDocumentsSubmittedAt",
@@ -167,7 +96,7 @@ export const getRecruitmentColumns = ({
       cell: ({ row }) => {
         const id = row.original.id as string;
         const canCreateEmployee = canCreateEmployeeProfile && isSelectedCandidate(row.original);
-        const canInviteApplicant = canInviteApplicants && isSelectedCandidate(row.original);
+        const canInviteApplicant = canInviteApplicants && !!row.original.email;
 
         return (
           <div className="flex flex-wrap gap-2">
@@ -198,7 +127,7 @@ export const getRecruitmentColumns = ({
               <Button
                 asChild
                 size="icon"
-                className="bg-orange-500 hover:bg-orange-600"
+                className="bg-blue-600 hover:bg-blue-700"
               >
                 <Link href={`/recruitment/edit/${id}`}>
                   <EditIcon size={16} />
@@ -209,7 +138,7 @@ export const getRecruitmentColumns = ({
             {canDelete && (
               <Button
                 size="icon"
-                variant="destructive"
+                className="bg-red-600 hover:bg-red-700"
                 onClick={() => onDelete(id)}
               >
                 <Trash size={16} />
