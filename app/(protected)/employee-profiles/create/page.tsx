@@ -12,7 +12,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft, UserPlus } from "lucide-react";
 
-const EmployeeProfileCreatePage = async () => {
+const EmployeeProfileCreatePage = async ({
+  searchParams,
+}: {
+  searchParams?: Promise<{ recruitmentId?: string | string[] }>;
+}) => {
   const route = "/employee-profiles";
   const [canCreateByRole, isHrEmployee] = await Promise.all([
     canAccess(route, "create"),
@@ -23,6 +27,10 @@ const EmployeeProfileCreatePage = async () => {
   if (!canCreate) {
     redirect("/404");
   }
+
+  const params = await searchParams;
+  const recruitmentId =
+    typeof params?.recruitmentId === "string" ? params.recruitmentId : "";
 
   return (
     <Card className="rounded-3xl border border-white/60 bg-white/80 shadow-xl backdrop-blur-md">
@@ -58,7 +66,10 @@ const EmployeeProfileCreatePage = async () => {
       </CardHeader>
 
       <CardContent className="pt-6">
-        <EmployeeProfileForm update={false} />
+        <EmployeeProfileForm
+          update={false}
+          initialRecruitmentId={recruitmentId}
+        />
       </CardContent>
     </Card>
   );

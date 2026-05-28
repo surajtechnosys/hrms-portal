@@ -4,8 +4,42 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "./lib/prisma";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcrypt";
+import { promises as fs } from "fs";
+import path from "path";
 
 const NextAuth = (NextAuthModule as any).default ?? NextAuthModule;
+
+type RecruitmentApplicantAuthRecord = {
+  id?: string;
+  candidateName?: string;
+  email?: string;
+  applicantPortalId?: string;
+  applicantUsername?: string;
+  applicantPasswordHash?: string;
+  applicantPortalEnabled?: boolean;
+  status?: string;
+};
+
+async function readRecruitmentApplicantsForAuth(): Promise<
+  RecruitmentApplicantAuthRecord[]
+> {
+  const dataFilePath = path.join(
+    process.cwd(),
+    "lib",
+    "data",
+    "recruitment-applications.json",
+  );
+
+  try {
+    const raw = await fs.readFile(dataFilePath, "utf8");
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? (parsed as RecruitmentApplicantAuthRecord[])
+      : [];
+  } catch {
+    return [];
+  }
+}
 
 async function authorizeCredentials(username: string, password: string) {
   const identifier = username.trim();
@@ -94,6 +128,47 @@ async function authorizeCredentials(username: string, password: string) {
         email: employer.email ?? "",
         role: "employer",
         accountType: "employer",
+      };
+    }
+  }
+
+  const applicants = await readRecruitmentApplicantsForAuth();
+  const applicant = applicants.find((record) => {
+    const normalizedIdentifier = identifier.toLowerCase();
+
+    return (
+      record.status === "ACTIVE" &&
+      record.applicantPortalEnabled &&
+      !!record.applicantPasswordHash &&
+      [
+        record.applicantUsername,
+        record.applicantPortalId,
+        record.email,
+      ]
+        .filter(Boolean)
+        .some((value) => value?.toLowerCase() === normalizedIdentifier)
+    );
+  });
+
+  if (applicant?.applicantPasswordHash) {
+    const isMatched = await bcrypt.compare(
+      password,
+      applicant.applicantPasswordHash,
+    );
+
+    if (isMatched) {
+      const [firstName = "", ...rest] = (applicant.candidateName || "Applicant")
+        .trim()
+        .split(/\s+/);
+
+      return {
+        id: applicant.id ?? "",
+        username: applicant.applicantUsername ?? applicant.applicantPortalId ?? "",
+        firstName,
+        lastName: rest.join(" "),
+        email: applicant.email ?? "",
+        role: "applicant",
+        accountType: "applicant",
       };
     }
   }

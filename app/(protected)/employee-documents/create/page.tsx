@@ -1,3 +1,4 @@
+import { auth } from "@/auth";
 import EmployeeDocumentForm from "@/components/employee-documents/employee-document-form";
 import { Button } from "@/components/ui/button";
 import {
@@ -6,7 +7,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getCurrentEmployeeDocumentOwner } from "@/lib/actions/employee-documents";
 import { isCurrentEmployeeHr } from "@/lib/employee-job-role";
 import { canAccess } from "@/lib/rbac";
 import Link from "next/link";
@@ -19,19 +19,17 @@ const EmployeeDocumentCreatePage = async ({
   searchParams: Promise<{ from?: string | string[] }>;
 }) => {
   const route = "/employee-documents";
-  const [canCreateByRole, isHrEmployee] = await Promise.all([
-    canAccess(route, "create"),
-    isCurrentEmployeeHr(),
-  ]);
-  const canCreate = canCreateByRole || isHrEmployee;
+  const canCreate = await canAccess(route, "create");
 
   if (!canCreate) {
     redirect("/404");
   }
 
-  const currentEmployee = isHrEmployee
-    ? null
-    : await getCurrentEmployeeDocumentOwner();
+  const session = await auth();
+  const isHrEmployee = await isCurrentEmployeeHr();
+  const isSelfServiceEmployee =
+    session?.user?.role?.toLowerCase() === "employee" && !isHrEmployee;
+
   const { from } = await searchParams;
   const openedFromDashboard = from === "employee-dashboard";
   const backHref = openedFromDashboard ? "/employee-dashboard" : "/employee-documents";
@@ -48,10 +46,12 @@ const EmployeeDocumentCreatePage = async ({
 
             <div>
               <CardTitle className="text-2xl font-bold text-slate-800">
-                Add Employee Document
+                {isSelfServiceEmployee ? "Add Employee Document" : "Add Applicant Document"}
               </CardTitle>
               <p className="mt-1 text-sm text-slate-500">
-                Upload and manage employee documents securely
+                {isSelfServiceEmployee
+                  ? "Upload your personal documents for HR review"
+                  : "Upload and manage applicant documents before employee creation"}
               </p>
             </div>
           </div>
@@ -72,8 +72,8 @@ const EmployeeDocumentCreatePage = async ({
       <CardContent className="pt-6">
         <EmployeeDocumentForm
           update={false}
-          currentEmployee={currentEmployee}
           redirectTo={backHref}
+          mode={isSelfServiceEmployee ? "employee" : "applicant"}
         />
       </CardContent>
     </Card>

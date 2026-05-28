@@ -1,3 +1,4 @@
+import { auth } from "@/auth";
 import EmployeeDocumentForm from "@/components/employee-documents/employee-document-form";
 import { Button } from "@/components/ui/button";
 import {
@@ -7,7 +8,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  getCurrentEmployeeDocumentOwner,
   getEmployeeDocumentById,
 } from "@/lib/actions/employee-documents";
 import { isCurrentEmployeeHr } from "@/lib/employee-job-role";
@@ -23,15 +23,16 @@ const EmployeeDocumentEditPage = async ({
   params: Promise<{ id: string }>;
 }) => {
   const route = "/employee-documents";
-  const [canEditByRole, isHrEmployee] = await Promise.all([
-    canAccess(route, "edit"),
-    isCurrentEmployeeHr(),
-  ]);
-  const canEdit = canEditByRole || isHrEmployee;
+  const canEdit = await canAccess(route, "edit");
 
   if (!canEdit) {
     redirect("/404");
   }
+
+  const session = await auth();
+  const isHrEmployee = await isCurrentEmployeeHr();
+  const isSelfServiceEmployee =
+    session?.user?.role?.toLowerCase() === "employee" && !isHrEmployee;
 
   const { id } = await params;
   const record = await getEmployeeDocumentById(id);
@@ -39,10 +40,6 @@ const EmployeeDocumentEditPage = async ({
   if (!record.success || !record.data) {
     notFound();
   }
-
-  const currentEmployee = isHrEmployee
-    ? null
-    : await getCurrentEmployeeDocumentOwner();
 
   return (
     <Card className="rounded-3xl border border-white/60 bg-white/80 shadow-xl backdrop-blur-md">
@@ -56,10 +53,12 @@ const EmployeeDocumentEditPage = async ({
 
             <div>
               <CardTitle className="text-2xl font-bold text-slate-800">
-                Edit Employee Document
+                {isSelfServiceEmployee ? "Edit Employee Document" : "Edit Applicant Document"}
               </CardTitle>
               <p className="mt-1 text-sm text-slate-500">
-                Update employee document details and files
+                {isSelfServiceEmployee
+                  ? "Update your uploaded document details and files"
+                  : "Update applicant document details and files"}
               </p>
             </div>
           </div>
@@ -81,7 +80,7 @@ const EmployeeDocumentEditPage = async ({
         <EmployeeDocumentForm
           data={record.data as EmployeeDocument}
           update={true}
-          currentEmployee={currentEmployee}
+          mode={isSelfServiceEmployee ? "employee" : "applicant"}
         />
       </CardContent>
     </Card>

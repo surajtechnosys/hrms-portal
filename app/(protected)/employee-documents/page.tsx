@@ -1,3 +1,4 @@
+import { auth } from "@/auth";
 import { Button } from "@/components/ui/button";
 import { getEmployeeDocuments } from "@/lib/actions/employee-documents";
 import { isCurrentEmployeeHr } from "@/lib/employee-job-role";
@@ -12,6 +13,9 @@ const EmployeeDocumentPage = async () => {
     getRoutePermissions(route),
     isCurrentEmployeeHr(),
   ]);
+  const session = await auth();
+  const isSelfServiceEmployee =
+    session?.user?.role?.toLowerCase() === "employee" && !isHrEmployee;
   const permissions = isHrEmployee
     ? {
         canView: true,
@@ -19,6 +23,13 @@ const EmployeeDocumentPage = async () => {
         canEdit: true,
         canDelete: false,
       }
+    : isSelfServiceEmployee
+      ? {
+          canView: true,
+          canCreate: true,
+          canEdit: true,
+          canDelete: false,
+        }
     : routePermissions;
 
   if (!permissions.canView) {
@@ -33,11 +44,13 @@ const EmployeeDocumentPage = async () => {
       canEdit={permissions.canEdit}
       canDelete={permissions.canDelete}
       canReview={isHrEmployee}
-      title="Employee ID & Docs"
+      title={isSelfServiceEmployee ? "My Documents" : "Employee Documents"}
       actions={
         permissions.canCreate && (
           <Button className="bg-blue-500 hover:bg-blue-600">
-            <Link href="/employee-documents/create">Add Employee Document</Link>
+            <Link href="/employee-documents/create">
+              {isSelfServiceEmployee ? "Add My Document" : "Add Applicant Document"}
+            </Link>
           </Button>
         )
       }

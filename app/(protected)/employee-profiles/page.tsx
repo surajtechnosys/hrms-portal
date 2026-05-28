@@ -42,6 +42,7 @@ const EmployeeProfilePage = async () => {
       eyebrow="Employee Search"
       title="Employee Profiles"
       description="Search, filter, and open employee profiles from a single directory view."
+      showFilters={false}
       actions={permissions.canCreate ? (
         <Button
           asChild

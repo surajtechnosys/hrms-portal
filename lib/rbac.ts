@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "./prisma";
-import { isCurrentEmployeeManager } from "./employee-job-role";
+import { isCurrentEmployeeHr, isCurrentEmployeeManager } from "./employee-job-role";
 
 export type PermissionAction = "view" | "create" | "edit" | "delete";
 
@@ -98,6 +98,18 @@ function isProjectManagementRoute(route: string) {
   );
 }
 
+function isRecruitmentRoute(route: string) {
+  return route === "/recruitment";
+}
+
+function isRecruitmentIntakeRoute(route: string) {
+  return route === "/recruitment-intake";
+}
+
+function isEmployeeDocumentsRoute(route: string) {
+  return route === "/employee-documents";
+}
+
 function isAdminUser(user: UserWithPermissions | null) {
   return !!user?.role?.name?.toLowerCase().includes("admin");
 }
@@ -152,8 +164,27 @@ export async function canAccess(route: string, action: PermissionAction) {
 
   if (
     isEmployeeUser(user) &&
-    (route === "/employee-documents" ||
-      route === "/employee-task-tracking" ||
+    isRecruitmentRoute(route) &&
+    (await isCurrentEmployeeHr())
+  ) {
+    return action !== "delete";
+  }
+
+  if (
+    isEmployeeUser(user) &&
+    isRecruitmentIntakeRoute(route) &&
+    (await isCurrentEmployeeHr())
+  ) {
+    return action !== "delete";
+  }
+
+  if (isEmployeeUser(user) && isEmployeeDocumentsRoute(route)) {
+    return action !== "delete";
+  }
+
+  if (
+    isEmployeeUser(user) &&
+    (route === "/employee-task-tracking" ||
       isEodReportingRoute(route) ||
       route === "/attendance" ||
       route === "/attendance/my" ||
@@ -215,8 +246,42 @@ export async function getRoutePermissions(route: string) {
 
   if (
     isEmployeeUser(user) &&
-    (route === "/employee-documents" ||
-      route === "/employee-task-tracking" ||
+    isRecruitmentRoute(route) &&
+    (await isCurrentEmployeeHr())
+  ) {
+    return {
+      canView: true,
+      canCreate: true,
+      canEdit: true,
+      canDelete: false,
+    };
+  }
+
+  if (
+    isEmployeeUser(user) &&
+    isRecruitmentIntakeRoute(route) &&
+    (await isCurrentEmployeeHr())
+  ) {
+    return {
+      canView: true,
+      canCreate: true,
+      canEdit: true,
+      canDelete: false,
+    };
+  }
+
+  if (isEmployeeUser(user) && isEmployeeDocumentsRoute(route)) {
+    return {
+      canView: true,
+      canCreate: true,
+      canEdit: true,
+      canDelete: false,
+    };
+  }
+
+  if (
+    isEmployeeUser(user) &&
+    (route === "/employee-task-tracking" ||
       isEodReportingRoute(route) ||
       route === "/attendance" ||
       route === "/attendance/my" ||
@@ -287,7 +352,9 @@ export async function getAccessibleRoutes() {
     routes.add("/leave-requests");
     routes.add("/eod-reporting");
     routes.add("/dashboard-design");
+    routes.add("/recruitment-intake");
     routes.add("/project-tracking");
+    routes.add("/recruitment");
     return Array.from(routes);
   }
 
@@ -305,11 +372,16 @@ export async function getAccessibleRoutes() {
         .map((roleModule) => roleModule.module.route) || []
     );
 
-    routes.add("/employee-documents");
     routes.add("/employee-task-tracking");
     routes.add("/eod-reporting");
     routes.add("/attendance/my");
     routes.add("/leave-requests/my");
+    routes.add("/employee-documents");
+
+    if (await isCurrentEmployeeHr()) {
+      routes.add("/recruitment-intake");
+      routes.add("/recruitment");
+    }
 
     if (await isCurrentEmployeeManager()) {
       routes.add("/projects");
