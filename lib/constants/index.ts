@@ -91,28 +91,109 @@ export const transferPromotionDefaultValues = {
 /* ---------------- EMPLOYEE ID & DOCS ---------------- */
 export const employeeDocumentDefaultValues = {
   documentOwnerType: "APPLICANT" as const,
+  documentContext: "SELF_SERVICE" as const,
+  sourceInterviewApplicantId: "",
   applicantId: "",
   applicantCode: "",
   candidateName: "",
+  dateOfBirth: "",
+  gender: "",
+  email: "",
+  mobileNumber: "",
   employeeId: "",
   employeeCode: "",
   employeeName: "",
   linkedEmployeeId: "",
   linkedEmployeeCode: "",
   linkedEmployeeName: "",
+  appliedPosition: "",
+  skillsLevel: "",
+  totalExperience: "",
+  relevantExperience: "",
+  qualification: "",
+  maritalStatus: "",
+  nationality: "",
 
   // ---------------- DOCUMENTS ----------------
+  passportPhotoFileUrl: "",
+  passportPhotoStatus: "PENDING_REVIEW" as const,
   aadhaarNumber: "",
   aadhaarFileUrl: "",
+  aadhaarStatus: "PENDING_REVIEW" as const,
   panNumber: "",
   panFileUrl: "",
+  panStatus: "PENDING_REVIEW" as const,
+  passportFileUrl: "",
+  passportStatus: "PENDING_REVIEW" as const,
+  drivingLicenseFileUrl: "",
+  drivingLicenseStatus: "PENDING_REVIEW" as const,
+  voterIdFileUrl: "",
+  voterIdStatus: "PENDING_REVIEW" as const,
+  currentAddress: "",
+  permanentAddress: "",
+  city: "",
+  state: "",
+  postalCode: "",
+  addressProofFileUrl: "",
+  addressProofStatus: "PENDING_REVIEW" as const,
 
   // ---------------- EDUCATION ----------------
+  highestQualification: "",
+  institutionName: "",
+  passingYear: "",
+  class10MarksheetFileUrl: "",
+  class10MarksheetStatus: "PENDING_REVIEW" as const,
+  class12MarksheetFileUrl: "",
+  class12MarksheetStatus: "PENDING_REVIEW" as const,
+  highestQualificationFileUrl: "",
+  highestQualificationStatus: "PENDING_REVIEW" as const,
+  additionalDegreesFileUrl: "",
+  additionalDegreesStatus: "PENDING_REVIEW" as const,
+  professionalCertificationsFileUrl: "",
+  professionalCertificationsStatus: "PENDING_REVIEW" as const,
   educationEntries: [],
 
   // ---------------- EXPERIENCE ----------------
   experienceType: ExperienceType.FRESHER,
   experienceEntries: [],
+  experienceLetterFileUrl: "",
+  experienceLetterStatus: "PENDING_REVIEW" as const,
+  relievingLetterFileUrl: "",
+  relievingLetterStatus: "PENDING_REVIEW" as const,
+  salarySlip1FileUrl: "",
+  salarySlip2FileUrl: "",
+  salarySlip3FileUrl: "",
+  salarySlipsStatus: "PENDING_REVIEW" as const,
+  previousOfferLetterFileUrl: "",
+  previousOfferLetterStatus: "PENDING_REVIEW" as const,
+  promotionAppraisalLettersFileUrl: "",
+  promotionAppraisalLettersStatus: "PENDING_REVIEW" as const,
+  uanNumber: "",
+
+  // ---------------- BANKING ----------------
+  bankName: "",
+  accountHolderName: "",
+  accountNumber: "",
+  ifscCode: "",
+  branchName: "",
+  bankProofFileUrl: "",
+  bankProofStatus: "PENDING_REVIEW" as const,
+
+  // ---------------- PF / UAN ----------------
+  pfPassbookFileUrl: "",
+  pfPassbookStatus: "PENDING_REVIEW" as const,
+  pfTransferDocumentsFileUrl: "",
+  pfTransferDocumentsStatus: "PENDING_REVIEW" as const,
+
+  // ---------------- EMERGENCY ----------------
+  emergencyContactName: "",
+  emergencyContactRelationship: "",
+  emergencyContactNumber: "",
+
+  // ---------------- DECLARATION ----------------
+  declarationInfoAccurate: false,
+  declarationAuthorizeVerification: false,
+  declarationAgreePolicies: false,
 
   // ---------------- COMMON ----------------
   reviewStatus: "PENDING",
@@ -174,6 +255,7 @@ export const employerDefaultValues = {
 };
 
 export const recruitmentDefaultValues = {
+  sourceInterviewApplicantId: "",
   applicantPortalId: "",
   applicantUsername: "",
   applicantPasswordHash: "",

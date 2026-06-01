@@ -161,7 +161,7 @@ function generateApplicantPassword() {
 }
 
 function getApplicantPortalUrl() {
-  return `${SERVER_URL.replace(/\/$/, "")}/applicant-dashboard`;
+  return `${SERVER_URL.replace(/\/$/, "")}/applicant-dashboard/documents`;
 }
 
 function buildApplicantInviteEmail(input: {
@@ -171,12 +171,12 @@ function buildApplicantInviteEmail(input: {
   password: string;
 }) {
   const portalUrl = getApplicantPortalUrl();
-  const subject = `${APP_NAME} pre-onboarding document portal access`;
+  const subject = `${APP_NAME} pre-onboarding onboarding form access`;
   const text = [
     `Hello ${input.applicantName},`,
     "",
     "You have been selected for the next step in the pre-onboarding process.",
-    "Please log in to the applicant portal and submit your documents.",
+    "Please log in to the applicant portal and complete your onboarding form.",
     "",
     `Applicant ID: ${input.applicantPortalId}`,
     `Username: ${input.applicantUsername}`,
@@ -188,11 +188,11 @@ function buildApplicantInviteEmail(input: {
   ].join("\n");
   const html = `
     <p>Hello ${input.applicantName},</p>
-    <p>You have been selected for the next step in the pre-onboarding process. Please log in to the applicant portal and submit your documents.</p>
+    <p>You have been selected for the next step in the pre-onboarding process. Please log in to the applicant portal and complete your onboarding form.</p>
     <p><strong>Applicant ID:</strong> ${input.applicantPortalId}</p>
     <p><strong>Username:</strong> ${input.applicantUsername}</p>
     <p><strong>Password:</strong> ${input.password}</p>
-    <p><a href="${portalUrl}">Open applicant portal</a></p>
+    <p><a href="${portalUrl}">Open onboarding form</a></p>
     <p>Regards,<br />${APP_NAME}</p>
   `;
 
@@ -215,6 +215,7 @@ function normalizeRecruitmentApplication(
   return {
     ...input,
     id: input.id ?? crypto.randomUUID(),
+    sourceInterviewApplicantId: input.sourceInterviewApplicantId?.trim() || "",
     applicantPortalId: input.applicantPortalId || identity.applicantPortalId,
     applicantUsername:
       input.applicantUsername || identity.applicantUsername,
@@ -371,6 +372,22 @@ export async function createRecruitmentApplication(
   try {
     const parsed = recruitmentSchema.parse(data);
     const records = await readRecruitmentData();
+
+    if (
+      parsed.sourceInterviewApplicantId &&
+      records.some(
+        (record) =>
+          record.sourceInterviewApplicantId ===
+          parsed.sourceInterviewApplicantId,
+      )
+    ) {
+      return {
+        success: false,
+        message:
+          "This selected interview candidate has already been moved to pre-onboarding.",
+      };
+    }
+
     const nextRecord = normalizeRecruitmentApplication(parsed, records);
 
     records.push(nextRecord);
@@ -476,6 +493,8 @@ export async function updateRecruitmentApplication(
       ...parsed,
       id,
       createdAt: records[index].createdAt,
+      sourceInterviewApplicantId:
+        records[index].sourceInterviewApplicantId,
       applicantPortalId: records[index].applicantPortalId,
       applicantUsername: records[index].applicantUsername,
       applicantPasswordHash: records[index].applicantPasswordHash,

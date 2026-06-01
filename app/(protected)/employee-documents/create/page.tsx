@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { getSelectedInterviewCandidates } from "@/lib/actions/interviews";
 import { isCurrentEmployeeHr } from "@/lib/employee-job-role";
 import { canAccess } from "@/lib/rbac";
 import Link from "next/link";
@@ -16,7 +17,10 @@ import { ArrowLeft, FilePlus2 } from "lucide-react";
 const EmployeeDocumentCreatePage = async ({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string | string[] }>;
+  searchParams: Promise<{
+    from?: string | string[];
+    sourceInterviewApplicantId?: string | string[];
+  }>;
 }) => {
   const route = "/employee-documents";
   const canCreate = await canAccess(route, "create");
@@ -30,9 +34,17 @@ const EmployeeDocumentCreatePage = async ({
   const isSelfServiceEmployee =
     session?.user?.role?.toLowerCase() === "employee" && !isHrEmployee;
 
-  const { from } = await searchParams;
+  const [selectedCandidates, params] = await Promise.all([
+    getSelectedInterviewCandidates(),
+    searchParams,
+  ]);
+  const { from, sourceInterviewApplicantId } = params;
   const openedFromDashboard = from === "employee-dashboard";
   const backHref = openedFromDashboard ? "/employee-dashboard" : "/employee-documents";
+  const selectedInterviewApplicantId =
+    typeof sourceInterviewApplicantId === "string"
+      ? sourceInterviewApplicantId
+      : sourceInterviewApplicantId?.[0] || "";
 
   return (
     <Card className="rounded-3xl border border-white/60 bg-white/80 shadow-xl backdrop-blur-md">
@@ -74,6 +86,8 @@ const EmployeeDocumentCreatePage = async ({
           update={false}
           redirectTo={backHref}
           mode={isSelfServiceEmployee ? "employee" : "applicant"}
+          selectedCandidates={selectedCandidates}
+          initialSelectedInterviewApplicantId={selectedInterviewApplicantId}
         />
       </CardContent>
     </Card>

@@ -454,6 +454,19 @@ export async function createEmployeeDocument(
       });
       const records = await readApplicantDocumentData();
 
+      if (
+        record.sourceInterviewApplicantId &&
+        records.some(
+          (item) =>
+            item.sourceInterviewApplicantId === record.sourceInterviewApplicantId,
+        )
+      ) {
+        return {
+          success: false,
+          message: "This selected candidate already has an onboarding document record.",
+        };
+      }
+
       records.push(normalizeApplicantDocument(record));
       await writeApplicantDocumentData(records);
       await markApplicantDocumentsSubmitted(context.currentApplicant.id);
@@ -493,6 +506,19 @@ export async function createEmployeeDocument(
       documentOwnerType: "APPLICANT",
     });
     const records = await readApplicantDocumentData();
+
+    if (
+      record.sourceInterviewApplicantId &&
+      records.some(
+        (item) =>
+          item.sourceInterviewApplicantId === record.sourceInterviewApplicantId,
+      )
+    ) {
+      return {
+        success: false,
+        message: "This selected candidate already has an onboarding document record.",
+      };
+    }
 
     records.push(normalizeApplicantDocument(record));
     await writeApplicantDocumentData(records);

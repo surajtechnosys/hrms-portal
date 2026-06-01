@@ -282,14 +282,14 @@
     "meetingLinkOrLocation": "noida",
     "status": "IN_PROGRESS",
     "feedback": "",
-    "ratingScore": 0,
-    "recommendation": null,
+    "ratingScore": 7,
+    "recommendation": "PROCEED_TO_NEXT_ROUND",
     "strengths": "",
     "weaknesses": "",
     "createdBy": "fa87a826-7b9b-44ce-b00e-e8d9b7f44df9",
     "createdByName": "vatasalaya",
-    "updatedBy": "fa87a826-7b9b-44ce-b00e-e8d9b7f44df9",
-    "updatedByName": "vatasalaya",
+    "updatedBy": "96522469-d299-4bbd-90cc-ff65154ac541",
+    "updatedByName": "piyush",
     "completedAt": "",
     "history": [
       {
@@ -300,11 +300,96 @@
         "actorName": "vatasalaya",
         "actorRole": "HR ",
         "createdAt": "2026-05-29T12:35:13.807Z"
+      },
+      {
+        "id": "17bd60c8-909a-40be-9d10-4f5f7f0e0b09",
+        "action": "RECOMMENDATION_UPDATED",
+        "description": "Recommendation updated to PROCEED TO NEXT ROUND.",
+        "actorId": "96522469-d299-4bbd-90cc-ff65154ac541",
+        "actorName": "piyush",
+        "actorRole": "Software Developer",
+        "createdAt": "2026-06-01T05:43:18.892Z"
+      },
+      {
+        "id": "36fb662d-085c-4651-bb33-184c00298ce5",
+        "action": "FEEDBACK_SUBMITTED",
+        "description": "Interviewer submitted score 7/10, recommendation PROCEED TO NEXT ROUND.",
+        "actorId": "96522469-d299-4bbd-90cc-ff65154ac541",
+        "actorName": "piyush",
+        "actorRole": "Software Developer",
+        "createdAt": "2026-06-01T05:43:18.893Z"
       }
     ],
     "statusNote": "",
     "id": "baaa3c36-10cd-4982-b9ff-c933ec773f89",
     "createdAt": "2026-05-29T12:35:13.807Z",
-    "updatedAt": "2026-05-29T12:35:13.807Z"
+    "updatedAt": "2026-06-01T05:43:18.895Z"
+  },
+  {
+    "interviewId": "INT-0006",
+    "applicantId": "bd619b08-2116-45f4-bbd7-9e3923a95bc3",
+    "applicantName": "manaoj",
+    "appliedPosition": "developer",
+    "interviewRound": "TECHNICAL_ROUND_2",
+    "interviewerId": "dee266b6-204f-400c-9ead-2f53f618f290",
+    "interviewerName": "deepak",
+    "interviewerJobRole": "manager",
+    "scheduledDate": "2026-06-01",
+    "scheduledTime": "11:20",
+    "interviewMode": "OFFLINE",
+    "meetingLinkOrLocation": "noida",
+    "status": "COMPLETED",
+    "feedback": "",
+    "ratingScore": 9,
+    "recommendation": "SELECTED",
+    "strengths": "",
+    "weaknesses": "",
+    "createdBy": "fa87a826-7b9b-44ce-b00e-e8d9b7f44df9",
+    "createdByName": "vatasalaya",
+    "updatedBy": "dee266b6-204f-400c-9ead-2f53f618f290",
+    "updatedByName": "deepak",
+    "completedAt": "2026-06-01T05:49:13.965Z",
+    "history": [
+      {
+        "id": "2092012e-6edb-4564-b7c0-be0f859d36cb",
+        "action": "INTERVIEW_CREATED",
+        "description": "Interview scheduled for TECHNICAL ROUND 2.",
+        "actorId": "fa87a826-7b9b-44ce-b00e-e8d9b7f44df9",
+        "actorName": "vatasalaya",
+        "actorRole": "HR ",
+        "createdAt": "2026-06-01T05:46:01.068Z"
+      },
+      {
+        "id": "b333b623-cce9-4902-9321-72bb5983648d",
+        "action": "STATUS_UPDATED",
+        "description": "Interview status changed from SCHEDULED to COMPLETED.",
+        "actorId": "dee266b6-204f-400c-9ead-2f53f618f290",
+        "actorName": "deepak",
+        "actorRole": "manager",
+        "createdAt": "2026-06-01T05:49:13.963Z"
+      },
+      {
+        "id": "c6cf9b21-40ed-472c-84d6-f8f4f5a8b9d5",
+        "action": "RECOMMENDATION_UPDATED",
+        "description": "Recommendation updated to SELECTED.",
+        "actorId": "dee266b6-204f-400c-9ead-2f53f618f290",
+        "actorName": "deepak",
+        "actorRole": "manager",
+        "createdAt": "2026-06-01T05:49:13.964Z"
+      },
+      {
+        "id": "5f0e338b-eb98-475a-997a-914cd890bbf1",
+        "action": "FEEDBACK_SUBMITTED",
+        "description": "Interviewer submitted score 9/10, recommendation SELECTED.",
+        "actorId": "dee266b6-204f-400c-9ead-2f53f618f290",
+        "actorName": "deepak",
+        "actorRole": "manager",
+        "createdAt": "2026-06-01T05:49:13.964Z"
+      }
+    ],
+    "statusNote": "",
+    "id": "88a05bef-cbbe-4ff1-84ea-cf4c298453e0",
+    "createdAt": "2026-06-01T05:46:01.068Z",
+    "updatedAt": "2026-06-01T05:49:13.966Z"
   }
 ]

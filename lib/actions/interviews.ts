@@ -75,6 +75,24 @@ type InterviewCreateApplicantOption = {
   latestRecommendation?: string | null;
 };
 
+export type SelectedInterviewCandidateOption = {
+  applicantId: string;
+  requestId: string;
+  interviewId: string;
+  candidateName: string;
+  profilePost: string;
+  email: string;
+  mobileNumber: string;
+  skillsLevel: string;
+  totalExperience: string;
+  relevantExperience: string;
+  qualification: string;
+  interviewRound: string;
+  status: string;
+  recommendation: string | null;
+  sourceInterviewApplicantId: string;
+};
+
 const dataFilePath = path.join(process.cwd(), "lib", "data", "interviews.json");
 
 async function ensureDataFile() {
@@ -116,6 +134,22 @@ function getNextInterviewId(records: InterviewRecord[]) {
     }, 0) + 1;
 
   return `INT-${String(next).padStart(4, "0")}`;
+}
+
+function getApplicantInterviewId(records: InterviewRecord[], applicantId: string) {
+  const applicantRecords = records
+    .filter((record) => record.applicantId === applicantId)
+    .slice()
+    .sort((left, right) =>
+      (left.createdAt || left.updatedAt || "").localeCompare(
+        right.createdAt || right.updatedAt || "",
+      ),
+    );
+
+  return (
+    applicantRecords.find((record) => record.interviewId?.trim())?.interviewId?.trim() ||
+    ""
+  );
 }
 
 const ROUND_ORDER = [
@@ -512,6 +546,59 @@ export async function getInterviewCreateOptions() {
   };
 }
 
+export async function getSelectedInterviewCandidates(): Promise<
+  SelectedInterviewCandidateOption[]
+> {
+  const actor = await getActorContext();
+
+  if (!actor?.canManageAll) {
+    return [];
+  }
+
+  const selectedRecords = (await readInterviewData())
+    .filter((record) => record.recommendation === "SELECTED")
+    .sort((left, right) =>
+      (right.updatedAt || right.createdAt || "").localeCompare(
+        left.updatedAt || left.createdAt || "",
+      ),
+    );
+
+  const latestSelectedByApplicant = new Map<string, InterviewRecord>();
+
+  for (const record of selectedRecords) {
+    if (!latestSelectedByApplicant.has(record.applicantId)) {
+      latestSelectedByApplicant.set(record.applicantId, record);
+    }
+  }
+
+  const candidates = await Promise.all(
+    [...latestSelectedByApplicant.values()].map(async (record) => {
+      const intake = await getRecruitmentIntakeById(record.applicantId);
+      const intakeData = intake.success && intake.data ? intake.data : null;
+
+      return {
+        applicantId: record.applicantId,
+        requestId: intakeData?.id || record.applicantId,
+        interviewId: record.interviewId || "",
+        candidateName: intakeData?.name || record.applicantName || "",
+        profilePost: intakeData?.appliedPosition || record.appliedPosition || "",
+        email: intakeData?.email || "",
+        mobileNumber: intakeData?.phone || "",
+        skillsLevel: intakeData?.skills || "",
+        totalExperience: intakeData?.experience || "",
+        relevantExperience: intakeData?.experience || "",
+        qualification: "",
+        interviewRound: record.interviewRound,
+        status: record.status,
+        recommendation: record.recommendation || null,
+        sourceInterviewApplicantId: record.applicantId,
+      };
+    }),
+  );
+
+  return candidates;
+}
+
 export async function createInterview(
   data: InterviewRecord,
 ): Promise<InterviewActionResponse> {
@@ -546,6 +633,7 @@ export async function createInterview(
 
     const records = await readInterviewData();
     const latestApplicantInterview = getLatestApplicantInterview(records, parsed.applicantId);
+    const applicantInterviewId = getApplicantInterviewId(records, parsed.applicantId);
 
     if (latestApplicantInterview?.recommendation === "SELECTED") {
       return {
@@ -566,6 +654,7 @@ export async function createInterview(
         ...parsed,
         applicantName: applicant.data.name,
         appliedPosition: applicant.data.appliedPosition,
+        interviewId: applicantInterviewId || getNextInterviewId(records),
         createdBy: actor.employeeId,
         createdByName: actor.name,
         updatedBy: actor.employeeId,

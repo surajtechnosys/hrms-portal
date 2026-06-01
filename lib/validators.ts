@@ -71,6 +71,13 @@ const interviewRecommendationStatuses = [
   "REJECTED",
   "ON_HOLD",
 ] as const;
+const documentVerificationStatuses = [
+  "PENDING_REVIEW",
+  "APPROVED",
+  "REJECTED",
+  "REUPLOAD_REQUESTED",
+] as const;
+const employeeDocumentContexts = ["SELF_SERVICE", "ONBOARDING"] as const;
 
 /* ---------------- AUTH ---------------- */
 export const loginFormSchema = z.object({
@@ -161,16 +168,89 @@ export const employeeDocumentSchema = z
   .object({
     id: z.string().optional(),
     documentOwnerType: z.enum(employeeDocumentOwnerTypes).default("APPLICANT"),
+    documentContext: z.enum(employeeDocumentContexts).default("SELF_SERVICE"),
+    sourceInterviewApplicantId: z.string().optional(),
 
     applicantId: z.string().optional(),
     applicantCode: z.string().optional(),
     candidateName: z.string().optional(),
+    dateOfBirth: z.string().optional(),
+    gender: z.string().optional(),
+    email: z.string().optional(),
+    mobileNumber: z.string().optional(),
     employeeId: z.string().optional(),
     employeeCode: z.string().optional(),
     employeeName: z.string().optional(),
     linkedEmployeeId: z.string().optional(),
     linkedEmployeeCode: z.string().optional(),
     linkedEmployeeName: z.string().optional(),
+    appliedPosition: z.string().optional(),
+    skillsLevel: z.string().optional(),
+    totalExperience: z.string().optional(),
+    relevantExperience: z.string().optional(),
+    qualification: z.string().optional(),
+    maritalStatus: z.string().optional(),
+    nationality: z.string().optional(),
+    passportPhotoFileUrl: z.string().optional(),
+    passportPhotoStatus: z.enum(documentVerificationStatuses).optional(),
+    aadhaarStatus: z.enum(documentVerificationStatuses).optional(),
+    panStatus: z.enum(documentVerificationStatuses).optional(),
+    passportFileUrl: z.string().optional(),
+    passportStatus: z.enum(documentVerificationStatuses).optional(),
+    drivingLicenseFileUrl: z.string().optional(),
+    drivingLicenseStatus: z.enum(documentVerificationStatuses).optional(),
+    voterIdFileUrl: z.string().optional(),
+    voterIdStatus: z.enum(documentVerificationStatuses).optional(),
+    currentAddress: z.string().optional(),
+    permanentAddress: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    postalCode: z.string().optional(),
+    addressProofFileUrl: z.string().optional(),
+    addressProofStatus: z.enum(documentVerificationStatuses).optional(),
+    highestQualification: z.string().optional(),
+    institutionName: z.string().optional(),
+    passingYear: z.string().optional(),
+    class10MarksheetFileUrl: z.string().optional(),
+    class10MarksheetStatus: z.enum(documentVerificationStatuses).optional(),
+    class12MarksheetFileUrl: z.string().optional(),
+    class12MarksheetStatus: z.enum(documentVerificationStatuses).optional(),
+    highestQualificationFileUrl: z.string().optional(),
+    highestQualificationStatus: z.enum(documentVerificationStatuses).optional(),
+    additionalDegreesFileUrl: z.string().optional(),
+    additionalDegreesStatus: z.enum(documentVerificationStatuses).optional(),
+    professionalCertificationsFileUrl: z.string().optional(),
+    professionalCertificationsStatus: z.enum(documentVerificationStatuses).optional(),
+    experienceLetterFileUrl: z.string().optional(),
+    experienceLetterStatus: z.enum(documentVerificationStatuses).optional(),
+    relievingLetterFileUrl: z.string().optional(),
+    relievingLetterStatus: z.enum(documentVerificationStatuses).optional(),
+    salarySlip1FileUrl: z.string().optional(),
+    salarySlip2FileUrl: z.string().optional(),
+    salarySlip3FileUrl: z.string().optional(),
+    salarySlipsStatus: z.enum(documentVerificationStatuses).optional(),
+    previousOfferLetterFileUrl: z.string().optional(),
+    previousOfferLetterStatus: z.enum(documentVerificationStatuses).optional(),
+    promotionAppraisalLettersFileUrl: z.string().optional(),
+    promotionAppraisalLettersStatus: z.enum(documentVerificationStatuses).optional(),
+    bankName: z.string().optional(),
+    accountHolderName: z.string().optional(),
+    accountNumber: z.string().optional(),
+    ifscCode: z.string().optional(),
+    branchName: z.string().optional(),
+    bankProofFileUrl: z.string().optional(),
+    bankProofStatus: z.enum(documentVerificationStatuses).optional(),
+    uanNumber: z.string().optional(),
+    pfPassbookFileUrl: z.string().optional(),
+    pfPassbookStatus: z.enum(documentVerificationStatuses).optional(),
+    pfTransferDocumentsFileUrl: z.string().optional(),
+    pfTransferDocumentsStatus: z.enum(documentVerificationStatuses).optional(),
+    emergencyContactName: z.string().optional(),
+    emergencyContactRelationship: z.string().optional(),
+    emergencyContactNumber: z.string().optional(),
+    declarationInfoAccurate: z.boolean().optional(),
+    declarationAuthorizeVerification: z.boolean().optional(),
+    declarationAgreePolicies: z.boolean().optional(),
 
     // ---------------- DOCUMENTS ----------------
     aadhaarNumber: z.string().min(1, "Aadhaar number is required"),
@@ -245,6 +325,69 @@ export const employeeDocumentSchema = z
       }
     }
 
+    if (data.documentContext === "ONBOARDING") {
+      const requiredFields = [
+        ["candidateName", "Full name is required"],
+        ["dateOfBirth", "Date of birth is required"],
+        ["gender", "Gender is required"],
+        ["email", "Personal email address is required"],
+        ["mobileNumber", "Mobile number is required"],
+        ["maritalStatus", "Marital status is required"],
+        ["nationality", "Nationality is required"],
+        ["passportPhotoFileUrl", "Passport size photograph is required"],
+        ["aadhaarFileUrl", "Aadhaar card is required"],
+        ["panFileUrl", "PAN card is required"],
+        ["currentAddress", "Current address is required"],
+        ["permanentAddress", "Permanent address is required"],
+        ["city", "City is required"],
+        ["state", "State is required"],
+        ["postalCode", "Postal code is required"],
+        ["addressProofFileUrl", "Address proof is required"],
+        ["highestQualification", "Highest qualification is required"],
+        ["institutionName", "Institution name is required"],
+        ["passingYear", "Passing year is required"],
+        ["class10MarksheetFileUrl", "Class 10 mark sheet is required"],
+        ["class12MarksheetFileUrl", "Class 12 mark sheet is required"],
+        ["highestQualificationFileUrl", "Highest qualification degree or certificate is required"],
+        ["bankName", "Bank name is required"],
+        ["accountHolderName", "Account holder name is required"],
+        ["accountNumber", "Account number is required"],
+        ["ifscCode", "IFSC code is required"],
+        ["branchName", "Branch name is required"],
+        ["bankProofFileUrl", "Bank proof document is required"],
+        ["emergencyContactName", "Emergency contact name is required"],
+        ["emergencyContactRelationship", "Emergency contact relationship is required"],
+        ["emergencyContactNumber", "Emergency contact number is required"],
+      ] as const;
+
+      for (const [field, message] of requiredFields) {
+        const value = data[field];
+        if (typeof value !== "string" || !value.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message,
+            path: [field],
+          });
+        }
+      }
+
+      const requiredChecks = [
+        ["declarationInfoAccurate", "Please confirm that all information provided is accurate."],
+        ["declarationAuthorizeVerification", "Please authorize document verification and employment history checks."],
+        ["declarationAgreePolicies", "Please agree to the company onboarding policies and terms."],
+      ] as const;
+
+      for (const [field, message] of requiredChecks) {
+        if (data[field] !== true) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message,
+            path: [field],
+          });
+        }
+      }
+    }
+
     // Education validation
     data.educationEntries?.forEach((entry, index) => {
       if (!entry.degree?.trim()) {
@@ -267,6 +410,14 @@ export const employeeDocumentSchema = z
     // Experience validation
     if (data.experienceType !== ExperienceType.EXPERIENCED) {
       return;
+    }
+
+    if (!data.uanNumber?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "UAN number is required for experienced candidates",
+        path: ["uanNumber"],
+      });
     }
 
     if (!data.experienceEntries?.length) {
@@ -295,6 +446,25 @@ export const employeeDocumentSchema = z
         });
       }
     });
+
+    const requiredExperiencedFiles = [
+      ["experienceLetterFileUrl", "Experience letter is required"],
+      ["relievingLetterFileUrl", "Relieving letter is required"],
+      ["salarySlip1FileUrl", "Salary slip 1 is required"],
+      ["salarySlip2FileUrl", "Salary slip 2 is required"],
+      ["salarySlip3FileUrl", "Salary slip 3 is required"],
+    ] as const;
+
+    for (const [field, message] of requiredExperiencedFiles) {
+      const value = data[field];
+      if (typeof value !== "string" || !value.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message,
+          path: [field],
+        });
+      }
+    }
   });
 
 /* ---------------- EMPLOYEE PROFILE ---------------- */
@@ -388,6 +558,7 @@ export const createEmployerSchema = employerSchema.extend({
 /* ---------------- RECRUITMENT ---------------- */
 export const recruitmentSchema = z.object({
   id: z.string().optional(),
+  sourceInterviewApplicantId: z.string().optional(),
   applicantPortalId: z.string().optional(),
   applicantUsername: z.string().optional(),
   applicantPasswordHash: z.string().optional(),
