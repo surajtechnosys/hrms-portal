@@ -1,6 +1,6 @@
 "use client";
 
-import { ExperienceType, Status } from "@prisma/client";
+import { ExperienceType } from "@prisma/client";
 import {
   createEmployeeDocument,
   updateEmployeeDocument,
@@ -16,7 +16,6 @@ import {
   Loader2,
   Upload,
   Trash2,
-  Plus,
   GraduationCap,
   Briefcase,
   User,
@@ -28,7 +27,6 @@ import React, { useEffect } from "react";
 import {
   FieldPath,
   SubmitHandler,
-  useFieldArray,
   useForm,
   useWatch,
 } from "react-hook-form";
@@ -88,30 +86,6 @@ const textAreaClass =
 const cardClass =
   "rounded-3xl border border-slate-200 bg-white/90 p-5 shadow-sm space-y-5";
 
-const experienceFileFields = [
-  { name: "experienceLetterFileUrl", label: "Experience Letter" },
-  { name: "salarySlip1FileUrl", label: "Salary Slip 1" },
-  { name: "salarySlip2FileUrl", label: "Salary Slip 2" },
-  { name: "salarySlip3FileUrl", label: "Salary Slip 3" },
-] as const;
-
-const createEducationEntry = () => ({
-  degree: "",
-  college: "",
-  year: "",
-  marks: undefined,
-  marksheetFileUrl: "",
-});
-
-const createExperienceEntry = () => ({
-  totalExperience: "",
-  previousCompanyName: "",
-  experienceLetterFileUrl: "",
-  salarySlip1FileUrl: "",
-  salarySlip2FileUrl: "",
-  salarySlip3FileUrl: "",
-});
-
 const requiredLabel = (label: string): React.ReactNode => (
   <span>
     {label}
@@ -121,17 +95,7 @@ const requiredLabel = (label: string): React.ReactNode => (
 
 type InputType = z.input<typeof employeeDocumentSchema>;
 type OutputType = z.output<typeof employeeDocumentSchema>;
-
-type ImageFieldPath = Extract<
-  FieldPath<InputType>,
-  | "aadhaarFileUrl"
-  | "panFileUrl"
-  | `educationEntries.${number}.marksheetFileUrl`
-  | `experienceEntries.${number}.experienceLetterFileUrl`
-  | `experienceEntries.${number}.salarySlip1FileUrl`
-  | `experienceEntries.${number}.salarySlip2FileUrl`
-  | `experienceEntries.${number}.salarySlip3FileUrl`
->;
+type ImageFieldPath = FieldPath<InputType>;
 
 const readFileAsDataUrl = (file: File) =>
   new Promise<string>((resolve, reject) => {
@@ -148,7 +112,6 @@ const EmployeeDocumentForm = ({
   mode = "applicant",
   selectedCandidates = [],
   initialSelectedInterviewApplicantId,
-  showApplicantSelection = true,
 }: Props) => {
   const router = useRouter();
   const id = data?.id;
@@ -166,10 +129,6 @@ const EmployeeDocumentForm = ({
     control: form.control,
     name: "experienceType",
   });
-  const isApplicantDocumentMode =
-    mode === "applicant" || mode === "applicant-self";
-
-  console.log(isApplicantDocumentMode)
   const selectedInterviewApplicantId = useWatch({
     control: form.control,
     name: "sourceInterviewApplicantId",
@@ -177,25 +136,6 @@ const EmployeeDocumentForm = ({
   const selectedInterviewCandidate = selectedCandidates.find(
     (item) => item.sourceInterviewApplicantId === selectedInterviewApplicantId,
   );
-
-  const {
-    fields: educationFields,
-    append: appendEducation,
-    remove: removeEducation,
-  } = useFieldArray({
-    control: form.control,
-    name: "educationEntries",
-  });
-
-  const {
-    fields: experienceFields,
-    append: appendExperience,
-    remove: removeExperience,
-    replace: replaceExperience,
-  } = useFieldArray({
-    control: form.control,
-    name: "experienceEntries",
-  });
 
   useEffect(() => {
     if (data) form.reset(data);
@@ -256,27 +196,6 @@ const EmployeeDocumentForm = ({
     form.setValue("documentContext", "ONBOARDING");
   }, [form, mode]);
 
-  useEffect(() => {
-    if (!educationFields.length) {
-      appendEducation(createEducationEntry());
-    }
-  }, [educationFields.length, appendEducation]);
-
-  useEffect(() => {
-    if (experienceType === ExperienceType.EXPERIENCED) {
-      if (!experienceFields.length) {
-        appendExperience(createExperienceEntry());
-      }
-    } else {
-      replaceExperience([]);
-    }
-  }, [
-    experienceType,
-    experienceFields.length,
-    appendExperience,
-    replaceExperience,
-  ]);
-
   const onSubmit: SubmitHandler<OutputType> = async (values) => {
     startTransition(async () => {
       const res =
@@ -299,61 +218,65 @@ const EmployeeDocumentForm = ({
     <FormField
       control={form.control}
       name={name}
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>{label}</FormLabel>
+      render={({ field }) => {
+        const fileUrl = typeof field.value === "string" ? field.value : "";
 
-          <FormControl>
-            <div className="space-y-3">
-              <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-cyan-300 bg-cyan-50 px-4 py-4 text-sm font-medium text-cyan-700 transition hover:bg-cyan-100">
-                <Upload className="h-4 w-4" />
-                Upload File
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
+        return (
+          <FormItem>
+            <FormLabel>{label}</FormLabel>
 
-                    try {
-                      const base64 = await readFileAsDataUrl(file);
-                      field.onChange(base64);
-                    } catch {
-                      toast.error("Unable to read file");
-                    }
-                  }}
-                />
-              </label>
+            <FormControl>
+              <div className="space-y-3">
+                <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-cyan-300 bg-cyan-50 px-4 py-4 text-sm font-medium text-cyan-700 transition hover:bg-cyan-100">
+                  <Upload className="h-4 w-4" />
+                  Upload File
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
 
-              {field.value && (
-                <div className="space-y-2">
-                  <Image
-                    src={field.value}
-                    alt={label}
-                    width={220}
-                    height={140}
-                    unoptimized
-                    className="h-36 w-full rounded-2xl border object-cover md:w-56"
+                      try {
+                        const base64 = await readFileAsDataUrl(file);
+                        field.onChange(base64);
+                      } catch {
+                        toast.error("Unable to read file");
+                      }
+                    }}
                   />
+                </label>
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="rounded-xl"
-                    onClick={() => field.onChange("")}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Remove
-                  </Button>
-                </div>
-              )}
-            </div>
-          </FormControl>
+                {fileUrl && (
+                  <div className="space-y-2">
+                    <Image
+                      src={fileUrl}
+                      alt={label}
+                      width={220}
+                      height={140}
+                      unoptimized
+                      className="h-36 w-full rounded-2xl border object-cover md:w-56"
+                    />
 
-          <FormMessage />
-        </FormItem>
-      )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="rounded-xl"
+                      onClick={() => field.onChange("")}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Remove
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </FormControl>
+
+            <FormMessage />
+          </FormItem>
+        );
+      }}
     />
   );
 
@@ -366,176 +289,88 @@ const EmployeeDocumentForm = ({
     <FormField
       control={form.control}
       name={name}
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>{label}</FormLabel>
-          <FormControl>
-            <div className="space-y-3">
-              <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-cyan-300 bg-cyan-50 px-4 py-4 text-sm font-medium text-cyan-700 transition hover:bg-cyan-100">
-                <Upload className="h-4 w-4" />
-                Upload File
-                <input
-                  type="file"
-                  accept={accept}
-                  className="hidden"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
+      render={({ field }) => {
+        const fileUrl = typeof field.value === "string" ? field.value : "";
+        const isImage = fileUrl.startsWith("data:image/");
+        const altText = typeof label === "string" ? label : "Uploaded document";
 
-                    try {
-                      const base64 = await readFileAsDataUrl(file);
-                      field.onChange(base64);
-                      form.setValue(statusName, "PENDING_REVIEW" as never, {
-                        shouldDirty: true,
-                      });
-                    } catch {
-                      toast.error("Unable to read file");
-                    }
-                  }}
-                />
-              </label>
+        return (
+          <FormItem>
+            <FormLabel>{label}</FormLabel>
+            <FormControl>
+              <div className="space-y-3">
+                <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-cyan-300 bg-cyan-50 px-4 py-4 text-sm font-medium text-cyan-700 transition hover:bg-cyan-100">
+                  <Upload className="h-4 w-4" />
+                  Upload File
+                  <input
+                    type="file"
+                    accept={accept}
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
 
-              {field.value ? (
-                <div className="space-y-2">
-                  {String(field.value).startsWith("data:image/") ? (
-                    <Image
-                      src={String(field.value)}
-                      alt={
-                        typeof label === "string" ? label : "Uploaded document"
+                      try {
+                        const base64 = await readFileAsDataUrl(file);
+                        field.onChange(base64);
+                        form.setValue(statusName, "PENDING_REVIEW" as never, {
+                          shouldDirty: true,
+                        });
+                      } catch {
+                        toast.error("Unable to read file");
                       }
-                      width={220}
-                      height={140}
-                      unoptimized
-                      className="h-36 w-full rounded-2xl border object-cover md:w-56"
-                    />
-                  ) : (
-                    <a
-                      href={String(field.value)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm font-medium text-cyan-700"
+                    }}
+                  />
+                </label>
+
+                {fileUrl ? (
+                  <div className="space-y-2">
+                    {isImage ? (
+                      <Image
+                        src={fileUrl}
+                        alt={altText}
+                        width={220}
+                        height={140}
+                        unoptimized
+                        className="h-36 w-full rounded-2xl border object-cover md:w-56"
+                      />
+                    ) : (
+                      <a
+                        href={fileUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm font-medium text-cyan-700"
+                      >
+                        <FileText className="h-4 w-4" />
+                        Open uploaded file
+                      </a>
+                    )}
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="rounded-xl"
+                      onClick={() => field.onChange("")}
                     >
-                      <FileText className="h-4 w-4" />
-                      Open uploaded file
-                    </a>
-                  )}
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Remove
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            </FormControl>
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="rounded-xl"
-                    onClick={() => field.onChange("")}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Remove
-                  </Button>
-                </div>
-              ) : null}
-            </div>
-          </FormControl>
-
-          <FormMessage />
-        </FormItem>
-      )}
+            <FormMessage />
+          </FormItem>
+        );
+      }}
     />
   );
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {mode === "applicant" && showApplicantSelection ? (
-          <div className={cardClass}>
-            <div className="flex items-center gap-2">
-              <User className="h-5 w-5 text-cyan-500" />
-              <h3 className="text-lg font-semibold text-slate-800">
-                Applicant Details
-              </h3>
-            </div>
-
-            <div className="grid gap-5 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="sourceInterviewApplicantId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Selected Interview Candidate</FormLabel>
-                    <Select
-                      value={field.value ?? ""}
-                      onValueChange={(value) => {
-                        field.onChange(value);
-                      }}
-                      disabled={!selectedCandidates.length}
-                    >
-                      <FormControl>
-                        <SelectTrigger className={fieldClass}>
-                          <SelectValue placeholder="Select selected candidate" />
-                        </SelectTrigger>
-                      </FormControl>
-
-                      <SelectContent className="rounded-2xl border border-slate-200 shadow-xl">
-                        {selectedCandidates.map((candidate) => (
-                          <SelectItem
-                            key={candidate.sourceInterviewApplicantId}
-                            value={candidate.sourceInterviewApplicantId}
-                          >
-                            {candidate.candidateName} - {candidate.profilePost}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="applicantCode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Request ID</FormLabel>
-                    <FormControl>
-                      <Input
-                        readOnly
-                        className={fieldClass}
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="candidateName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Full Name</FormLabel>
-                    <FormControl>
-                      <Input
-                        readOnly
-                        className={fieldClass}
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {selectedInterviewCandidate ? (
-                <div className="md:col-span-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-                  Selected from interview:{" "}
-                  {selectedInterviewCandidate.candidateName} (
-                  {selectedInterviewCandidate.requestId})
-                </div>
-              ) : null}
-            </div>
-
-            <div className="mt-6 space-y-6">
+        <div className="space-y-6">
               <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="mb-4 flex items-center gap-2">
                   <User className="h-5 w-5 text-cyan-500" />
@@ -1311,900 +1146,7 @@ const EmployeeDocumentForm = ({
                 </div>
               </div>
             </div>
-          </div>
-        ) : (
-          <div className={cardClass}>
-            <div className="flex items-center gap-2">
-              <IdCard className="h-5 w-5 text-cyan-500" />
-              <h3 className="text-lg font-semibold text-slate-800">
-                {mode === "employee"
-                  ? "Employee Document Upload"
-                  : "Applicant Document Upload"}
-              </h3>
-            </div>
-            <p className="text-sm text-slate-500">
-              {mode === "employee"
-                ? "Upload your identity, education, and experience records here. HR can review them later from the employee profile."
-                : "Upload your identity, education, and experience records here so HR can complete your joining documentation."}
-            </p>
-          </div>
-        )}
 
-        {isApplicantDocumentMode ? (
-          <>
-            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="mb-4 flex items-center gap-2">
-                <User className="h-5 w-5 text-cyan-500" />
-                <h3 className="text-lg font-semibold text-slate-900">
-                  Personal Information
-                </h3>
-              </div>
-              <p className="mb-4 text-sm text-slate-500">
-                Fields marked with <span className="text-rose-500">*</span> are
-                required.
-              </p>
-
-              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                <FormField
-                  control={form.control}
-                  name="candidateName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{requiredLabel("Full Name")}</FormLabel>
-                      <FormControl>
-                        <Input
-                          className={fieldClass}
-                          placeholder="Enter full name"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="dateOfBirth"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{requiredLabel("Date of Birth")}</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="date"
-                          className={fieldClass}
-                          {...field}
-                          value={(field.value as string | undefined) ?? ""}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="gender"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{requiredLabel("Gender")}</FormLabel>
-                      <Select
-                        value={(field.value as string | undefined) ?? ""}
-                        onValueChange={field.onChange}
-                      >
-                        <FormControl>
-                          <SelectTrigger className={fieldClass}>
-                            <SelectValue placeholder="Select gender" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {["Male", "Female", "Other", "Prefer not to say"].map(
-                            (option) => (
-                              <SelectItem key={option} value={option}>
-                                {option}
-                              </SelectItem>
-                            ),
-                          )}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        {requiredLabel("Personal Email Address")}
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="email"
-                          className={fieldClass}
-                          placeholder="Enter personal email"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="mobileNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{requiredLabel("Mobile Number")}</FormLabel>
-                      <FormControl>
-                        <Input
-                          className={fieldClass}
-                          placeholder="Enter mobile number"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="maritalStatus"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{requiredLabel("Marital Status")}</FormLabel>
-                      <Select
-                        value={(field.value as string | undefined) ?? ""}
-                        onValueChange={field.onChange}
-                      >
-                        <FormControl>
-                          <SelectTrigger className={fieldClass}>
-                            <SelectValue placeholder="Select marital status" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {[
-                            "Single",
-                            "Married",
-                            "Divorced",
-                            "Widowed",
-                            "Separated",
-                            "Other",
-                          ].map((option) => (
-                            <SelectItem key={option} value={option}>
-                              {option}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="nationality"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{requiredLabel("Nationality")}</FormLabel>
-                      <FormControl>
-                        <Input
-                          className={fieldClass}
-                          placeholder="Enter nationality"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="md:col-span-2 xl:col-span-3">
-                  {renderDocumentUpload(
-                    "passportPhotoFileUrl",
-                    "passportPhotoStatus",
-                    requiredLabel("Passport Size Photograph"),
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className={cardClass}>
-              <div className="flex items-center gap-2">
-                <IdCard className="h-5 w-5 text-cyan-500" />
-                <h3 className="text-lg font-semibold text-slate-800">
-                  Identity Documents
-                </h3>
-              </div>
-
-              <div className="grid gap-5 md:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="aadhaarNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Aadhaar Number</FormLabel>
-                      <FormControl>
-                        <Input
-                          className={fieldClass}
-                          placeholder="Enter Aadhaar Number"
-                          {...field}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                {renderUpload("aadhaarFileUrl", "Aadhaar Upload")}
-
-                <FormField
-                  control={form.control}
-                  name="panNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>PAN Number</FormLabel>
-                      <FormControl>
-                        <Input
-                          className={fieldClass}
-                          placeholder="Enter PAN Number"
-                          {...field}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                {renderUpload("panFileUrl", "PAN Upload")}
-              </div>
-            </div>
-
-            {/* Education */}
-            <div className={cardClass}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <GraduationCap className="h-5 w-5 text-cyan-500" />
-                  <h3 className="text-lg font-semibold text-slate-800">
-                    Education Details
-                  </h3>
-                </div>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-xl"
-                  onClick={() => appendEducation(createEducationEntry())}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add
-                </Button>
-              </div>
-
-              {educationFields.map((item, index) => (
-                <div
-                  key={item.id}
-                  className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-5 space-y-4"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-semibold text-slate-900">
-                        Education {index + 1}
-                      </h4>
-                      <p className="text-sm text-slate-500">
-                        Keep qualification details and marksheet in one place.
-                      </p>
-                    </div>
-
-                    {educationFields.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="rounded-xl"
-                        onClick={() => removeEducation(index)}
-                      >
-                        Remove
-                      </Button>
-                    )}
-                  </div>
-
-                  <div className="grid gap-5 md:grid-cols-2">
-                    <FormField
-                      control={form.control}
-                      name={`educationEntries.${index}.degree`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Degree</FormLabel>
-                          <FormControl>
-                            <Input
-                              className={fieldClass}
-                              placeholder="Enter degree"
-                              {...field}
-                              value={field.value ?? ""}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name={`educationEntries.${index}.college`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>College / University</FormLabel>
-                          <FormControl>
-                            <Input
-                              className={fieldClass}
-                              placeholder="Enter college or university"
-                              {...field}
-                              value={field.value ?? ""}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name={`educationEntries.${index}.year`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Passing Year</FormLabel>
-                          <FormControl>
-                            <Input
-                              className={fieldClass}
-                              placeholder="Enter passing year"
-                              {...field}
-                              value={field.value ?? ""}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name={`educationEntries.${index}.marks`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Marks / Percentage</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              className={fieldClass}
-                              placeholder="Enter marks"
-                              {...field}
-                              value={
-                                typeof field.value === "number" ||
-                                typeof field.value === "string"
-                                  ? field.value
-                                  : ""
-                              }
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {renderUpload(
-                      `educationEntries.${index}.marksheetFileUrl`,
-                      "Marksheet Upload",
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Experience */}
-            <div className={cardClass}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Briefcase className="h-5 w-5 text-cyan-500" />
-                  <h3 className="text-lg font-semibold text-slate-800">
-                    Experience Details
-                  </h3>
-                </div>
-
-                {experienceType === ExperienceType.EXPERIENCED && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="rounded-xl"
-                    onClick={() => appendExperience(createExperienceEntry())}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add
-                  </Button>
-                )}
-              </div>
-
-              <div className="grid gap-5 md:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="experienceType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Experience Type</FormLabel>
-
-                      <Select
-                        value={field.value ?? ""}
-                        onValueChange={(v) =>
-                          field.onChange(v as ExperienceType)
-                        }
-                      >
-                        <FormControl>
-                          <SelectTrigger className={fieldClass}>
-                            <SelectValue placeholder="Select type" />
-                          </SelectTrigger>
-                        </FormControl>
-
-                        <SelectContent className="rounded-2xl border border-slate-200 shadow-xl">
-                          <SelectItem value={ExperienceType.FRESHER}>
-                            Fresher
-                          </SelectItem>
-                          <SelectItem value={ExperienceType.EXPERIENCED}>
-                            Experienced
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Status</FormLabel>
-
-                      <Select
-                        value={field.value ?? ""}
-                        onValueChange={(v) => field.onChange(v as Status)}
-                      >
-                        <FormControl>
-                          <SelectTrigger className={fieldClass}>
-                            <SelectValue placeholder="Status" />
-                          </SelectTrigger>
-                        </FormControl>
-
-                        <SelectContent className="rounded-2xl border border-slate-200 shadow-xl">
-                          <SelectItem value={Status.ACTIVE}>Active</SelectItem>
-                          <SelectItem value={Status.INACTIVE}>
-                            Inactive
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {experienceType === ExperienceType.EXPERIENCED &&
-                experienceFields.map((item, index) => (
-                  <div
-                    key={item.id}
-                    className="space-y-4 rounded-2xl border border-slate-200 p-5"
-                  >
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-semibold">Experience {index + 1}</h4>
-
-                      {experienceFields.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="rounded-xl"
-                          onClick={() => removeExperience(index)}
-                        >
-                          Remove
-                        </Button>
-                      )}
-                    </div>
-
-                    <div className="grid gap-5 md:grid-cols-2">
-                      <FormField
-                        control={form.control}
-                        name={`experienceEntries.${index}.totalExperience`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Total Experience</FormLabel>
-                            <FormControl>
-                              <Input
-                                className={fieldClass}
-                                placeholder="Example: 2 years"
-                                {...field}
-                                value={field.value ?? ""}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name={`experienceEntries.${index}.previousCompanyName`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Previous Company</FormLabel>
-                            <FormControl>
-                              <Input
-                                className={fieldClass}
-                                placeholder="Enter previous company"
-                                {...field}
-                                value={field.value ?? ""}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      {experienceFileFields.map((fileField) =>
-                        renderUpload(
-                          `experienceEntries.${index}.${fileField.name}`,
-                          fileField.label,
-                        ),
-                      )}
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </>
-        ) : mode === "employee" ? (
-          <>
-            {/* Documents */}
-            <div className={cardClass}>
-              <div className="flex items-center gap-2">
-                <IdCard className="h-5 w-5 text-cyan-500" />
-                <h3 className="text-lg font-semibold text-slate-800">
-                  Identity Documents
-                </h3>
-              </div>
-
-              <div className="grid gap-5 md:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="aadhaarNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Aadhaar Number</FormLabel>
-                      <FormControl>
-                        <Input
-                          className={fieldClass}
-                          placeholder="Enter Aadhaar Number"
-                          {...field}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                {renderUpload("aadhaarFileUrl", "Aadhaar Upload")}
-
-                <FormField
-                  control={form.control}
-                  name="panNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>PAN Number</FormLabel>
-                      <FormControl>
-                        <Input
-                          className={fieldClass}
-                          placeholder="Enter PAN Number"
-                          {...field}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                {renderUpload("panFileUrl", "PAN Upload")}
-              </div>
-            </div>
-
-            {/* Education */}
-            <div className={cardClass}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <GraduationCap className="h-5 w-5 text-cyan-500" />
-                  <h3 className="text-lg font-semibold text-slate-800">
-                    Education Details
-                  </h3>
-                </div>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-xl"
-                  onClick={() => appendEducation(createEducationEntry())}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add
-                </Button>
-              </div>
-
-              {educationFields.map((item, index) => (
-                <div
-                  key={item.id}
-                  className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-5 space-y-4"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-semibold text-slate-900">
-                        Education {index + 1}
-                      </h4>
-                      <p className="text-sm text-slate-500">
-                        Keep qualification details and marksheet in one place.
-                      </p>
-                    </div>
-
-                    {educationFields.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="rounded-xl"
-                        onClick={() => removeEducation(index)}
-                      >
-                        Remove
-                      </Button>
-                    )}
-                  </div>
-
-                  <div className="grid gap-5 md:grid-cols-2">
-                    <FormField
-                      control={form.control}
-                      name={`educationEntries.${index}.degree`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Degree</FormLabel>
-                          <FormControl>
-                            <Input
-                              className={fieldClass}
-                              placeholder="Enter degree"
-                              {...field}
-                              value={field.value ?? ""}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name={`educationEntries.${index}.college`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>College / University</FormLabel>
-                          <FormControl>
-                            <Input
-                              className={fieldClass}
-                              placeholder="Enter college or university"
-                              {...field}
-                              value={field.value ?? ""}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name={`educationEntries.${index}.year`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Passing Year</FormLabel>
-                          <FormControl>
-                            <Input
-                              className={fieldClass}
-                              placeholder="Enter passing year"
-                              {...field}
-                              value={field.value ?? ""}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name={`educationEntries.${index}.marks`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Marks / Percentage</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              className={fieldClass}
-                              placeholder="Enter marks"
-                              {...field}
-                              value={
-                                typeof field.value === "number" ||
-                                typeof field.value === "string"
-                                  ? field.value
-                                  : ""
-                              }
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {renderUpload(
-                      `educationEntries.${index}.marksheetFileUrl`,
-                      "Marksheet Upload",
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Experience */}
-            <div className={cardClass}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Briefcase className="h-5 w-5 text-cyan-500" />
-                  <h3 className="text-lg font-semibold text-slate-800">
-                    Experience Details
-                  </h3>
-                </div>
-
-                {experienceType === ExperienceType.EXPERIENCED && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="rounded-xl"
-                    onClick={() => appendExperience(createExperienceEntry())}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add
-                  </Button>
-                )}
-              </div>
-
-              <div className="grid gap-5 md:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="experienceType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Experience Type</FormLabel>
-
-                      <Select
-                        value={field.value ?? ""}
-                        onValueChange={(v) =>
-                          field.onChange(v as ExperienceType)
-                        }
-                      >
-                        <FormControl>
-                          <SelectTrigger className={fieldClass}>
-                            <SelectValue placeholder="Select type" />
-                          </SelectTrigger>
-                        </FormControl>
-
-                        <SelectContent className="rounded-2xl border border-slate-200 shadow-xl">
-                          <SelectItem value={ExperienceType.FRESHER}>
-                            Fresher
-                          </SelectItem>
-                          <SelectItem value={ExperienceType.EXPERIENCED}>
-                            Experienced
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Status</FormLabel>
-
-                      <Select
-                        value={field.value ?? ""}
-                        onValueChange={(v) => field.onChange(v as Status)}
-                      >
-                        <FormControl>
-                          <SelectTrigger className={fieldClass}>
-                            <SelectValue placeholder="Status" />
-                          </SelectTrigger>
-                        </FormControl>
-
-                        <SelectContent className="rounded-2xl border border-slate-200 shadow-xl">
-                          <SelectItem value={Status.ACTIVE}>Active</SelectItem>
-                          <SelectItem value={Status.INACTIVE}>
-                            Inactive
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {experienceType === ExperienceType.EXPERIENCED &&
-                experienceFields.map((item, index) => (
-                  <div
-                    key={item.id}
-                    className="space-y-4 rounded-2xl border border-slate-200 p-5"
-                  >
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-semibold">Experience {index + 1}</h4>
-
-                      {experienceFields.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="rounded-xl"
-                          onClick={() => removeExperience(index)}
-                        >
-                          Remove
-                        </Button>
-                      )}
-                    </div>
-
-                    <div className="grid gap-5 md:grid-cols-2">
-                      <FormField
-                        control={form.control}
-                        name={`experienceEntries.${index}.totalExperience`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Total Experience</FormLabel>
-                            <FormControl>
-                              <Input
-                                className={fieldClass}
-                                placeholder="Example: 2 years"
-                                {...field}
-                                value={field.value ?? ""}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name={`experienceEntries.${index}.previousCompanyName`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Previous Company</FormLabel>
-                            <FormControl>
-                              <Input
-                                className={fieldClass}
-                                placeholder="Enter previous company"
-                                {...field}
-                                value={field.value ?? ""}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      {experienceFileFields.map((fileField) =>
-                        renderUpload(
-                          `experienceEntries.${index}.${fileField.name}`,
-                          fileField.label,
-                        ),
-                      )}
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </>
-        ) : null}
 
         {/* Remark */}
         <FormField

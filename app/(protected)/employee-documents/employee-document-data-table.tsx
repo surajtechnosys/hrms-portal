@@ -6,6 +6,8 @@ import {
   deleteEmployeeDocument,
   reviewEmployeeDocument,
 } from "@/lib/actions/employee-documents";
+import type { DocumentReviewStatus } from "@/lib/document-review";
+import type { DocumentVerificationStatus } from "@/lib/employee-document-review";
 import { EmployeeDocument } from "@/types";
 import { toast } from "sonner";
 import { getEmployeeDocumentColumns } from "./column";
@@ -50,14 +52,17 @@ export default function EmployeeDocumentDataTable({
 
   const reviewHandler = async (
     id: string,
-    reviewStatus: "APPROVED" | "REJECTED",
-    reviewRemark: string,
+    input: {
+      reviewRemark: string;
+      overallStatus: DocumentReviewStatus;
+      statusUpdates: Record<string, DocumentVerificationStatus>;
+    },
   ) => {
     setIsReviewing(true);
 
     const response = await reviewEmployeeDocument(id, {
-      reviewStatus,
-      reviewRemark,
+      reviewRemark: input.reviewRemark,
+      statusUpdates: input.statusUpdates,
     });
 
     setIsReviewing(false);
@@ -71,10 +76,10 @@ export default function EmployeeDocumentDataTable({
     setTableData((current) =>
       current.map((record) =>
         record.id === id
-          ? {
+            ? {
               ...record,
-              reviewStatus,
-              reviewRemark,
+              reviewStatus: input.overallStatus,
+              reviewRemark: input.reviewRemark,
             }
           : record,
       ),
@@ -100,6 +105,7 @@ export default function EmployeeDocumentDataTable({
       />
 
       <EmployeeDocumentReviewSheet
+        key={activeDocument?.id ?? "employee-document-review-sheet"}
         document={activeDocument}
         open={reviewSheetOpen}
         canReview={canReview}

@@ -1,6 +1,7 @@
 import { signOut } from "@/auth";
 import EmployeeDocumentForm from "@/components/employee-documents/employee-document-form";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -32,6 +33,8 @@ const ApplicantDocumentsPage = async () => {
     applicantCode: applicant.requestId,
     candidateName: applicant.candidateName,
   }) as EmployeeDocument;
+  const reuploadRequested =
+    existingDocument?.reviewStatus === "REUPLOAD_REQUESTED";
 
   return (
     <Card className="rounded-3xl border border-white/60 bg-white/80 shadow-xl backdrop-blur-md">
@@ -79,6 +82,29 @@ const ApplicantDocumentsPage = async () => {
       </CardHeader>
 
       <CardContent className="pt-6">
+        {reuploadRequested ? (
+          <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="bg-amber-100 text-amber-700">
+                REUPLOAD REQUESTED
+              </Badge>
+              <span className="font-medium">
+                HR has requested changes on one or more documents.
+              </span>
+            </div>
+            <p className="mt-2">
+              Please edit the affected documents and save the form again to
+              resubmit your application for review.
+            </p>
+            {existingDocument?.reviewRemark ? (
+              <p className="mt-2">
+                <span className="font-medium">Remark:</span>{" "}
+                {existingDocument.reviewRemark}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         <EmployeeDocumentForm
           data={formData}
           update={Boolean(existingDocument?.id)}

@@ -278,9 +278,9 @@
     "sourceInterviewApplicantId": "",
     "applicantPortalId": "APP-0006",
     "applicantUsername": "app-0006",
-    "applicantPasswordHash": "$2b$10$rdm2s4bVzQ0n1PosECpU5uprRSqBQtkanYQsLM8u4sV5EqLyGlfoC",
+    "applicantPasswordHash": "$2b$10$alU/WeaMadjzfBdnrnhIquEhimOmet74GPsm/Qsc2QuHf2K6w5Soa",
     "applicantPortalEnabled": true,
-    "applicantInvitedAt": "2026-06-01T09:48:50.429Z",
+    "applicantInvitedAt": "2026-06-02T10:19:19.842Z",
     "applicantDocumentsSubmittedAt": "",
     "serialNumber": "6",
     "requestId": "",
@@ -327,7 +327,7 @@
     "status": "ACTIVE",
     "id": "b3471e1a-e847-4b10-ae45-968872bc4205",
     "createdAt": "2026-06-01T09:40:21.071Z",
-    "updatedAt": "2026-06-01T09:48:50.429Z"
+    "updatedAt": "2026-06-02T10:19:19.843Z"
   },
   {
     "sourceInterviewApplicantId": "",
@@ -336,7 +336,7 @@
     "applicantPasswordHash": "$2b$10$d3M7Qzf8uT633ry6LH/XFOcbMbYFXjc6elsKP8iZMfp2DjjG/cYxi",
     "applicantPortalEnabled": true,
     "applicantInvitedAt": "2026-06-01T11:19:07.611Z",
-    "applicantDocumentsSubmittedAt": "",
+    "applicantDocumentsSubmittedAt": "2026-06-02T09:22:31.671Z",
     "serialNumber": "7",
     "requestId": "",
     "clientProjectName": "",
@@ -382,6 +382,6 @@
     "status": "ACTIVE",
     "id": "f8629780-e7e2-400f-9516-3f5a51865f61",
     "createdAt": "2026-06-01T09:50:22.173Z",
-    "updatedAt": "2026-06-01T11:19:07.614Z"
+    "updatedAt": "2026-06-02T09:22:31.671Z"
   }
 ]

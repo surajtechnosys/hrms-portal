@@ -15,7 +15,10 @@ import { ArrowLeft, UserPlus } from "lucide-react";
 const EmployeeProfileCreatePage = async ({
   searchParams,
 }: {
-  searchParams?: Promise<{ recruitmentId?: string | string[] }>;
+  searchParams?: Promise<{
+    recruitmentId?: string | string[];
+    sourceApplicantDocumentId?: string | string[];
+  }>;
 }) => {
   const route = "/employee-profiles";
   const [canCreateByRole, isHrEmployee] = await Promise.all([
@@ -31,6 +34,10 @@ const EmployeeProfileCreatePage = async ({
   const params = await searchParams;
   const recruitmentId =
     typeof params?.recruitmentId === "string" ? params.recruitmentId : "";
+  const sourceApplicantDocumentId =
+    typeof params?.sourceApplicantDocumentId === "string"
+      ? params.sourceApplicantDocumentId
+      : "";
 
   return (
     <Card className="rounded-3xl border border-white/60 bg-white/80 shadow-xl backdrop-blur-md">
@@ -69,6 +76,7 @@ const EmployeeProfileCreatePage = async ({
         <EmployeeProfileForm
           update={false}
           initialRecruitmentId={recruitmentId}
+          initialApplicantDocumentId={sourceApplicantDocumentId}
         />
       </CardContent>
     </Card>

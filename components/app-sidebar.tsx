@@ -384,11 +384,6 @@ function getMenuByRole(
         icon: <CalendarPlus size={18} />,
       },
       {
-        name: "My Documents",
-        url: "/employee-documents",
-        icon: <IdCard size={18} />,
-      },
-      {
         name: "My Task Tracking",
         url: "/employee-task-tracking",
         icon: <ListChecks size={18} />,

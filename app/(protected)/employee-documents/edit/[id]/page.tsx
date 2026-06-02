@@ -1,4 +1,3 @@
-import { auth } from "@/auth";
 import EmployeeDocumentForm from "@/components/employee-documents/employee-document-form";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,10 +28,10 @@ const EmployeeDocumentEditPage = async ({
     redirect("/404");
   }
 
-  const session = await auth();
   const isHrEmployee = await isCurrentEmployeeHr();
-  const isSelfServiceEmployee =
-    session?.user?.role?.toLowerCase() === "employee" && !isHrEmployee;
+  if (!isHrEmployee) {
+    redirect("/404");
+  }
 
   const { id } = await params;
   const record = await getEmployeeDocumentById(id);
@@ -53,12 +52,10 @@ const EmployeeDocumentEditPage = async ({
 
             <div>
               <CardTitle className="text-2xl font-bold text-slate-800">
-                {isSelfServiceEmployee ? "Edit Employee Document" : "Edit Applicant Document"}
+                Edit Applicant Document
               </CardTitle>
               <p className="mt-1 text-sm text-slate-500">
-                {isSelfServiceEmployee
-                  ? "Update your uploaded document details and files"
-                  : "Update applicant document details and files"}
+                Update applicant document details and files
               </p>
             </div>
           </div>
@@ -80,7 +77,7 @@ const EmployeeDocumentEditPage = async ({
         <EmployeeDocumentForm
           data={record.data as EmployeeDocument}
           update={true}
-          mode={isSelfServiceEmployee ? "employee" : "applicant"}
+          mode="applicant"
         />
       </CardContent>
     </Card>

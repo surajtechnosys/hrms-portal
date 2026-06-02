@@ -16,7 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, FileCheck2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useEffect } from "react";
-import { SubmitHandler, useForm } from "react-hook-form";
+import { SubmitHandler, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import z from "zod";
 
@@ -43,6 +43,7 @@ type Props = {
   data?: EmployeeProfile;
   update: boolean;
   initialRecruitmentId?: string;
+  initialApplicantDocumentId?: string;
 };
 
 type Option = {
@@ -86,6 +87,7 @@ const EmployeeProfileForm = ({
   data,
   update,
   initialRecruitmentId,
+  initialApplicantDocumentId,
 }: Props) => {
   const router = useRouter();
   const id = data?.id;
@@ -107,6 +109,17 @@ const EmployeeProfileForm = ({
     resolver: zodResolver(employeeProfileSchema),
     defaultValues: data ?? employeeProfileDefaultValues,
   });
+  const selectedApplicantDocumentId = useWatch({
+    control: form.control,
+    name: "sourceApplicantDocumentId",
+  });
+  const selectedApplicantDocument = React.useMemo(
+    () =>
+      applicantDocuments.find(
+        (item) => item.id === selectedApplicantDocumentId,
+      ) ?? null,
+    [applicantDocuments, selectedApplicantDocumentId],
+  );
 
   useEffect(() => {
     if (data) {
@@ -149,18 +162,33 @@ const EmployeeProfileForm = ({
   }, [form, initialRecruitmentId, update]);
 
   useEffect(() => {
-    if (!initialRecruitmentId || update || !applicantDocuments.length) {
+    if (update || !applicantDocuments.length) {
       return;
     }
 
-    const linkedApplicantDocument = applicantDocuments.find(
-      (item) => item.applicantId === initialRecruitmentId,
-    );
+    const linkedApplicantDocument = initialApplicantDocumentId
+      ? applicantDocuments.find((item) => item.id === initialApplicantDocumentId)
+      : initialRecruitmentId
+        ? applicantDocuments.find((item) => item.applicantId === initialRecruitmentId)
+        : null;
 
     if (linkedApplicantDocument) {
       form.setValue("sourceApplicantDocumentId", linkedApplicantDocument.id);
+      form.setValue("employeeName", linkedApplicantDocument.candidateName || "");
+      if (linkedApplicantDocument.email) {
+        form.setValue("email", linkedApplicantDocument.email);
+      }
+      if (linkedApplicantDocument.mobileNumber) {
+        form.setValue("phone", linkedApplicantDocument.mobileNumber);
+      }
     }
-  }, [applicantDocuments, form, initialRecruitmentId, update]);
+  }, [
+    applicantDocuments,
+    form,
+    initialApplicantDocumentId,
+    initialRecruitmentId,
+    update,
+  ]);
 
   const onSubmit: SubmitHandler<z.infer<typeof employeeProfileSchema>> = async (
     values,
@@ -211,9 +239,14 @@ const EmployeeProfileForm = ({
               </div>
             </div>
 
-            {selectedRecruitment && (
+            {(selectedRecruitment || selectedApplicantDocument) && (
               <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-                Creating employee profile for {selectedRecruitment.candidateName} from request {selectedRecruitment.requestId}.
+                Creating employee profile for{" "}
+                {selectedApplicantDocument?.candidateName ||
+                  selectedRecruitment?.candidateName}
+                {selectedApplicantDocument
+                  ? ` from applicant document ${selectedApplicantDocument.requestId}`
+                  : ` from request ${selectedRecruitment?.requestId}`}
               </div>
             )}
 
@@ -238,7 +271,6 @@ const EmployeeProfileForm = ({
                         if (!selected) {
                           return;
                         }
-
                         form.setValue("employeeName", selected.candidateName);
                         if (selected.email) {
                           form.setValue("email", selected.email);

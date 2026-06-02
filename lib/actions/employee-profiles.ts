@@ -24,6 +24,33 @@ function connectRelation(id?: string | null) {
   return id ? { connect: { id } } : { disconnect: true };
 }
 
+function isEmailUniqueConstraintError(error: unknown) {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002" &&
+    Array.isArray(error.meta?.target) &&
+    error.meta.target.includes("email")
+  );
+}
+
+async function findEmployeeProfileByEmail(email: string, excludeId?: string) {
+  return prisma.employeeProfile.findFirst({
+    where: {
+      email: {
+        equals: email,
+        mode: "insensitive",
+      },
+      ...(excludeId ? { id: { not: excludeId } } : {}),
+    },
+    select: {
+      id: true,
+      employeeName: true,
+      employeeCode: true,
+      email: true,
+    },
+  });
+}
+
 function getNextEmployeeCode(codes: string[]) {
   const nextNumber =
     codes.reduce((max, code) => {
@@ -343,6 +370,17 @@ export async function createEmployeeProfile(
 ): Promise<ActionResponse> {
   try {
     const record = employeeProfileSchema.parse(data);
+    const employeeName = record.employeeName.trim();
+    const email = record.email.trim();
+
+    const existingEmployee = await findEmployeeProfileByEmail(email);
+    if (existingEmployee) {
+      return {
+        success: false,
+        message: `An employee profile already exists for ${email}.`,
+      };
+    }
+
     const employeeCode = await generateEmployeeCode();
 
     const hashedPassword =
@@ -354,9 +392,9 @@ export async function createEmployeeProfile(
     await prisma.$transaction(async (tx) => {
       const employee = await tx.employeeProfile.create({
         data: {
-          employeeName: record.employeeName.trim(),
+          employeeName,
           employeeCode,
-          email: record.email,
+          email,
           password: hashedPassword,
           manager: record.managerId
             ? { connect: { id: record.managerId } }
@@ -408,6 +446,13 @@ export async function createEmployeeProfile(
       message: "Employee profile created successfully",
     };
   } catch (error) {
+    if (isEmailUniqueConstraintError(error)) {
+      return {
+        success: false,
+        message: "An employee profile already exists for this email.",
+      };
+    }
+
     return {
       success: false,
       message: formatError(error),
@@ -448,6 +493,8 @@ export async function updateEmployeeProfile(
 ): Promise<ActionResponse> {
   try {
     const record = employeeProfileSchema.parse(data);
+    const employeeName = record.employeeName.trim();
+    const email = record.email.trim();
 
     if (record.managerId && record.managerId === id) {
       return {
@@ -474,13 +521,21 @@ export async function updateEmployeeProfile(
       };
     }
 
+    const existingEmployee = await findEmployeeProfileByEmail(email, id);
+    if (existingEmployee) {
+      return {
+        success: false,
+        message: `An employee profile already exists for ${email}.`,
+      };
+    }
+
     await prisma.$transaction(async (tx) => {
       await tx.employeeProfile.update({
         where: { id },
         data: {
-          employeeName: record.employeeName.trim(),
+          employeeName,
           employeeCode: record.employeeCode || existingRecord.employeeCode,
-          email: record.email,
+          email,
           ...(hashedPassword ? { password: hashedPassword } : {}),
           manager: connectRelation(record.managerId),
           company: connectRelation(record.companyId),
@@ -513,6 +568,13 @@ export async function updateEmployeeProfile(
       message: "Employee profile updated successfully",
     };
   } catch (error) {
+    if (isEmailUniqueConstraintError(error)) {
+      return {
+        success: false,
+        message: "An employee profile already exists for this email.",
+      };
+    }
+
     return {
       success: false,
       message: formatError(error),

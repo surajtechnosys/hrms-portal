@@ -9,6 +9,7 @@ import {
 } from "@prisma/client";
 import { z } from "zod";
 import { DOCUMENT_REVIEW_STATUSES } from "./document-review";
+import { DOCUMENT_VERIFICATION_STATUSES } from "./employee-document-review";
 
 const EOD_APPROVAL_STATUSES = ["PENDING", "APPROVED", "REJECTED"] as const;
 const employeeDocumentOwnerTypes = ["APPLICANT", "EMPLOYEE"] as const;
@@ -70,12 +71,6 @@ const interviewRecommendationStatuses = [
   "SELECTED",
   "REJECTED",
   "ON_HOLD",
-] as const;
-const documentVerificationStatuses = [
-  "PENDING_REVIEW",
-  "APPROVED",
-  "REJECTED",
-  "REUPLOAD_REQUESTED",
 ] as const;
 const employeeDocumentContexts = ["SELF_SERVICE", "ONBOARDING"] as const;
 
@@ -192,59 +187,59 @@ export const employeeDocumentSchema = z
     maritalStatus: z.string().optional(),
     nationality: z.string().optional(),
     passportPhotoFileUrl: z.string().optional(),
-    passportPhotoStatus: z.enum(documentVerificationStatuses).optional(),
-    aadhaarStatus: z.enum(documentVerificationStatuses).optional(),
-    panStatus: z.enum(documentVerificationStatuses).optional(),
+    passportPhotoStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
+    aadhaarStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
+    panStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
     passportFileUrl: z.string().optional(),
-    passportStatus: z.enum(documentVerificationStatuses).optional(),
+    passportStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
     drivingLicenseFileUrl: z.string().optional(),
-    drivingLicenseStatus: z.enum(documentVerificationStatuses).optional(),
+    drivingLicenseStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
     voterIdFileUrl: z.string().optional(),
-    voterIdStatus: z.enum(documentVerificationStatuses).optional(),
+    voterIdStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
     currentAddress: z.string().optional(),
     permanentAddress: z.string().optional(),
     city: z.string().optional(),
     state: z.string().optional(),
     postalCode: z.string().optional(),
     addressProofFileUrl: z.string().optional(),
-    addressProofStatus: z.enum(documentVerificationStatuses).optional(),
+    addressProofStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
     highestQualification: z.string().optional(),
     institutionName: z.string().optional(),
     passingYear: z.string().optional(),
     class10MarksheetFileUrl: z.string().optional(),
-    class10MarksheetStatus: z.enum(documentVerificationStatuses).optional(),
+    class10MarksheetStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
     class12MarksheetFileUrl: z.string().optional(),
-    class12MarksheetStatus: z.enum(documentVerificationStatuses).optional(),
+    class12MarksheetStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
     highestQualificationFileUrl: z.string().optional(),
-    highestQualificationStatus: z.enum(documentVerificationStatuses).optional(),
+    highestQualificationStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
     additionalDegreesFileUrl: z.string().optional(),
-    additionalDegreesStatus: z.enum(documentVerificationStatuses).optional(),
+    additionalDegreesStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
     professionalCertificationsFileUrl: z.string().optional(),
-    professionalCertificationsStatus: z.enum(documentVerificationStatuses).optional(),
+    professionalCertificationsStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
     experienceLetterFileUrl: z.string().optional(),
-    experienceLetterStatus: z.enum(documentVerificationStatuses).optional(),
+    experienceLetterStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
     relievingLetterFileUrl: z.string().optional(),
-    relievingLetterStatus: z.enum(documentVerificationStatuses).optional(),
+    relievingLetterStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
     salarySlip1FileUrl: z.string().optional(),
     salarySlip2FileUrl: z.string().optional(),
     salarySlip3FileUrl: z.string().optional(),
-    salarySlipsStatus: z.enum(documentVerificationStatuses).optional(),
+    salarySlipsStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
     previousOfferLetterFileUrl: z.string().optional(),
-    previousOfferLetterStatus: z.enum(documentVerificationStatuses).optional(),
+    previousOfferLetterStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
     promotionAppraisalLettersFileUrl: z.string().optional(),
-    promotionAppraisalLettersStatus: z.enum(documentVerificationStatuses).optional(),
+    promotionAppraisalLettersStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
     bankName: z.string().optional(),
     accountHolderName: z.string().optional(),
     accountNumber: z.string().optional(),
     ifscCode: z.string().optional(),
     branchName: z.string().optional(),
     bankProofFileUrl: z.string().optional(),
-    bankProofStatus: z.enum(documentVerificationStatuses).optional(),
+    bankProofStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
     uanNumber: z.string().optional(),
     pfPassbookFileUrl: z.string().optional(),
-    pfPassbookStatus: z.enum(documentVerificationStatuses).optional(),
+    pfPassbookStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
     pfTransferDocumentsFileUrl: z.string().optional(),
-    pfTransferDocumentsStatus: z.enum(documentVerificationStatuses).optional(),
+    pfTransferDocumentsStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
     emergencyContactName: z.string().optional(),
     emergencyContactRelationship: z.string().optional(),
     emergencyContactNumber: z.string().optional(),
@@ -305,14 +300,6 @@ export const employeeDocumentSchema = z
           code: z.ZodIssueCode.custom,
           message: "Applicant is required",
           path: ["applicantId"],
-        });
-      }
-
-      if (!data.applicantCode?.trim()) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Request ID is required",
-          path: ["applicantCode"],
         });
       }
 
@@ -474,7 +461,7 @@ export const employeeProfileSchema = z.object({
   managerId: z.union([z.string().uuid(), z.literal("")]).optional(),
   employeeName: z.string().trim().min(1, "Employee name is required"),
   employeeCode: z.string().optional(),
-  email: z.string().min(1, "Email Id is required"),
+  email: z.string().trim().min(1, "Email Id is required"),
   password: z.union([
     z.string().min(6, "Password should be at least 6 characters long"),
     z.literal(""),
