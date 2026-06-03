@@ -13,6 +13,29 @@ type ActionResponse = {
   message: string;
 };
 
+export type RecruitmentIntakeInterviewApplicant = {
+  id: string;
+  requestId: string;
+  candidateName: string;
+  profilePost: string;
+  pipelineStatus: string;
+  email: string;
+  mobileNumber: string;
+  skillsLevel: string;
+  totalExperience: string;
+  relevantExperience: string;
+  qualification: string;
+  resumeSummary: string;
+  resumeUrl: string;
+};
+
+const INTERVIEW_ELIGIBLE_PIPELINE_STATUSES = new Set([
+  "SHORTLISTED",
+  "INTERVIEW_SCHEDULED",
+  "INTERVIEW_IN_PROGRESS",
+  "INTERVIEW_COMPLETED",
+]);
+
 const dataFilePath = path.join(
   process.cwd(),
   "lib",
@@ -90,6 +113,7 @@ function normalizeRecruitmentIntake(input: RecruitmentIntake): RecruitmentIntake
     experience: input.experience.trim(),
     appliedPosition: input.appliedPosition.trim(),
     source: input.source,
+    pipelineStatus: input.pipelineStatus || "APPLIED",
     createdAt: input.createdAt || now,
     updatedAt: now,
   };
@@ -115,6 +139,7 @@ function buildIntakeRecordFromForm(
     experience: getStringValue(formData, "experience"),
     appliedPosition: getStringValue(formData, "appliedPosition"),
     source: normalizeSource(getStringValue(formData, "source")),
+    pipelineStatus: normalizeSource(getStringValue(formData, "pipelineStatus")) || currentRecord?.pipelineStatus || "APPLIED",
     createdAt: currentRecord?.createdAt || undefined,
   });
 
@@ -155,6 +180,53 @@ export async function getRecruitmentIntakeById(id: string) {
       message: formatError(error),
     };
   }
+}
+
+export async function getRecruitmentIntakeInterviewApplicants(): Promise<
+  RecruitmentIntakeInterviewApplicant[]
+> {
+  const records = await getRecruitmentIntakes();
+  const eligibleRecords = records.filter((item) =>
+    INTERVIEW_ELIGIBLE_PIPELINE_STATUSES.has(item.pipelineStatus || ""),
+  );
+  const source = eligibleRecords.length ? eligibleRecords : records;
+
+  return source.map((item) => ({
+    id: item.id ?? "",
+    requestId: item.id ?? "",
+    candidateName: item.name,
+    profilePost: item.appliedPosition,
+    pipelineStatus: item.pipelineStatus || "APPLIED",
+    email: item.email,
+    mobileNumber: item.phone,
+    skillsLevel: item.skills,
+    totalExperience: item.experience,
+    relevantExperience: item.experience,
+    qualification: "",
+    resumeSummary: item.experience,
+    resumeUrl: item.resumeUrl || "",
+  }));
+}
+
+export async function updateRecruitmentIntakePipelineStatus(
+  applicantId: string,
+  pipelineStatus: RecruitmentIntake["pipelineStatus"],
+) {
+  const records = await readRecruitmentIntakeData();
+  const index = records.findIndex((item) => item.id === applicantId);
+
+  if (index === -1) {
+    return;
+  }
+
+  records[index] = normalizeRecruitmentIntake({
+    ...records[index],
+    pipelineStatus,
+  });
+
+  await writeRecruitmentIntakeData(records);
+  revalidatePath("/recruitment-intake");
+  revalidatePath("/interviews");
 }
 
 export async function createRecruitmentIntake(

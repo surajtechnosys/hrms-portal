@@ -9,6 +9,7 @@ import {
   Briefcase,
   Building2,
   CalendarCheck,
+  CalendarClock,
   CalendarPlus,
   ClipboardList,
   Search,
@@ -83,6 +84,11 @@ const onboardingMenuGroup: MenuGroup = {
       icon: <Users2Icon size={18} />,
     },
     {
+      name: "Interview Management",
+      url: "/interviews",
+      icon: <CalendarClock size={18} />,
+    },
+    {
       name: "Pre-Onboarding",
       url: "/recruitment",
       icon: <ClipboardList size={18} />,
@@ -91,6 +97,18 @@ const onboardingMenuGroup: MenuGroup = {
       name: "Employee Documents",
       url: "/employee-documents",
       icon: <IdCard size={18} />,
+    },
+  ],
+};
+
+const managerOnboardingMenuGroup: MenuGroup = {
+  name: "On-boarding",
+  icon: <ClipboardList size={18} />,
+  children: [
+    {
+      name: "Interview Management",
+      url: "/interviews",
+      icon: <CalendarClock size={18} />,
     },
   ],
 };
@@ -303,7 +321,7 @@ function getMenuByRole(
           url: "/employee-dashboard",
           icon: <Gauge size={18} />,
         },
-        onboardingMenuGroup,
+        managerOnboardingMenuGroup,
         {
           name: "My Attendance",
           url: "/attendance/my",
@@ -354,7 +372,6 @@ function getMenuByRole(
         url: "/employee-dashboard",
         icon: <Gauge size={18} />,
       },
-      onboardingMenuGroup,
       {
         name: "My Attendance",
         url: "/attendance/my",
@@ -364,11 +381,6 @@ function getMenuByRole(
         name: "My Leave Requests",
         url: "/leave-requests/my",
         icon: <CalendarPlus size={18} />,
-      },
-      {
-        name: "My Documents",
-        url: "/employee-documents",
-        icon: <IdCard size={18} />,
       },
       {
         name: "My Task Tracking",

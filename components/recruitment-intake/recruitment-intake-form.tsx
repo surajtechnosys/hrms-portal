@@ -9,6 +9,7 @@ import {
   createRecruitmentIntake,
   updateRecruitmentIntake,
 } from "@/lib/actions/recruitment-intake";
+import { recruitmentIntakeDefaultValues } from "@/lib/constants";
 import { type RecruitmentIntake } from "@/types";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -32,6 +33,18 @@ const sourceOptions = [
   { value: "WEBSITE", label: "Website" },
   { value: "WALK_IN", label: "Walk-in" },
   { value: "OTHER", label: "Other" },
+];
+
+const pipelineOptions = [
+  { value: "APPLIED", label: "Applied" },
+  { value: "SCREENING", label: "Screening" },
+  { value: "SHORTLISTED", label: "Shortlisted" },
+  { value: "INTERVIEW_SCHEDULED", label: "Interview Scheduled" },
+  { value: "INTERVIEW_IN_PROGRESS", label: "Interview In Progress" },
+  { value: "INTERVIEW_COMPLETED", label: "Interview Completed" },
+  { value: "SELECTED", label: "Selected" },
+  { value: "REJECTED", label: "Rejected" },
+  { value: "OFFER_PENDING", label: "Offer Pending" },
 ];
 
 const RecruitmentIntakeForm = ({ data, update }: Props) => {
@@ -152,10 +165,27 @@ const RecruitmentIntakeForm = ({ data, update }: Props) => {
           </label>
           <select
             name="source"
-            defaultValue={data?.source ?? "LINKEDIN"}
+            defaultValue={data?.source ?? recruitmentIntakeDefaultValues.source}
             className={fieldClass}
           >
             {sourceOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            Pipeline Status
+          </label>
+          <select
+            name="pipelineStatus"
+            defaultValue={data?.pipelineStatus ?? recruitmentIntakeDefaultValues.pipelineStatus}
+            className={fieldClass}
+          >
+            {pipelineOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>

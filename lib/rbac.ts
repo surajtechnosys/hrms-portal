@@ -106,6 +106,10 @@ function isRecruitmentIntakeRoute(route: string) {
   return route === "/recruitment-intake";
 }
 
+function isInterviewRoute(route: string) {
+  return route === "/interviews";
+}
+
 function isEmployeeDocumentsRoute(route: string) {
   return route === "/employee-documents";
 }
@@ -179,6 +183,10 @@ export async function canAccess(route: string, action: PermissionAction) {
   }
 
   if (isEmployeeUser(user) && isEmployeeDocumentsRoute(route)) {
+    return action !== "delete";
+  }
+
+  if (isEmployeeUser(user) && isInterviewRoute(route)) {
     return action !== "delete";
   }
 
@@ -279,6 +287,15 @@ export async function getRoutePermissions(route: string) {
     };
   }
 
+  if (isEmployeeUser(user) && isInterviewRoute(route)) {
+    return {
+      canView: true,
+      canCreate: (await isCurrentEmployeeHr()),
+      canEdit: true,
+      canDelete: false,
+    };
+  }
+
   if (
     isEmployeeUser(user) &&
     (route === "/employee-task-tracking" ||
@@ -355,6 +372,7 @@ export async function getAccessibleRoutes() {
     routes.add("/recruitment-intake");
     routes.add("/project-tracking");
     routes.add("/recruitment");
+    routes.add("/interviews");
     return Array.from(routes);
   }
 
@@ -381,6 +399,7 @@ export async function getAccessibleRoutes() {
     if (await isCurrentEmployeeHr()) {
       routes.add("/recruitment-intake");
       routes.add("/recruitment");
+      routes.add("/interviews");
     }
 
     if (await isCurrentEmployeeManager()) {

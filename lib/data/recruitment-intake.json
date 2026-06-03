@@ -10,6 +10,35 @@
     "appliedPosition": "developer",
     "source": "NAUKRI",
     "createdAt": "2026-05-28T12:16:15.570Z",
-    "updatedAt": "2026-05-28T12:16:15.570Z"
+    "updatedAt": "2026-05-29T06:21:43.569Z",
+    "pipelineStatus": "SELECTED"
+  },
+  {
+    "id": "b666ab59-7662-4ef9-9cc4-41ee3cb01486",
+    "name": "shivam",
+    "email": "shivam@gmail.com",
+    "phone": "3726384795",
+    "resumeUrl": "/uploads/recruitment-intake/1780044469530-Sy-Associates.pdf",
+    "skills": "managing",
+    "experience": "5yrs",
+    "appliedPosition": "manager",
+    "source": "WEBSITE",
+    "pipelineStatus": "SELECTED",
+    "createdAt": "2026-05-29T08:47:49.539Z",
+    "updatedAt": "2026-05-29T10:05:57.402Z"
+  },
+  {
+    "id": "bd619b08-2116-45f4-bbd7-9e3923a95bc3",
+    "name": "manaoj",
+    "email": "vatsalyathesyassociates@gmail.com",
+    "phone": "09045335777",
+    "resumeUrl": "/uploads/recruitment-intake/1780050858773-Sy-Associates.pdf",
+    "skills": "html ,css",
+    "experience": "1yrs",
+    "appliedPosition": "developer",
+    "source": "LINKEDIN",
+    "pipelineStatus": "SELECTED",
+    "createdAt": "2026-05-29T10:34:18.779Z",
+    "updatedAt": "2026-06-01T05:49:14.154Z"
   }
 ]

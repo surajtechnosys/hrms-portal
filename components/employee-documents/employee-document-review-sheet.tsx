@@ -11,9 +11,28 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { EmployeeDocument } from "@/types";
-import { Check, ExternalLink, X } from "lucide-react";
+import type { DocumentReviewStatus } from "@/lib/document-review";
+import {
+  Check,
+  ExternalLink,
+  FileText,
+  UserPlus,
+  X,
+} from "lucide-react";
+import Link from "next/link";
+
+import {
+  DOCUMENT_VERIFICATION_STATUSES,
+  type DocumentVerificationStatus,
+  formatDocumentVerificationStatus,
+  getDocumentVerificationBadgeClass,
+  getNextDocumentOverallStatus,
+  getReviewableDocumentSections,
+  REVIEWABLE_DOCUMENT_FIELDS,
+} from "@/lib/employee-document-review";
 
 type DocumentReviewSheetProps = {
   document: EmployeeDocument | null;
@@ -21,57 +40,134 @@ type DocumentReviewSheetProps = {
   canReview: boolean;
   isSubmitting: boolean;
   onOpenChange: (open: boolean) => void;
-  onReview: (id: string, status: "APPROVED" | "REJECTED", remark: string) => void;
+  onReview: (
+    id: string,
+    input: {
+      reviewRemark: string;
+      overallStatus: DocumentReviewStatus;
+      statusUpdates: Record<string, DocumentVerificationStatus>;
+    },
+  ) => void;
 };
 
-function reviewBadgeClass(status: EmployeeDocument["reviewStatus"]) {
-  if (status === "APPROVED") return "bg-emerald-100 text-emerald-700";
-  if (status === "REJECTED") return "bg-rose-100 text-rose-700";
-  return "bg-amber-100 text-amber-700";
-}
+type ReviewEntry = {
+  key: string;
+  statusKey: string;
+  label: string;
+  section: string;
+  previewKind: "image" | "file";
+  fileUrl: string;
+  status: DocumentVerificationStatus;
+  uploaded: boolean;
+};
 
-function previewLabel(value: string) {
-  return value.startsWith("data:") ? "Uploaded file preview" : "Open file";
-}
-
-function FilePreview({
-  title,
-  value,
-}: {
-  title: string;
-  value?: string | null | undefined;
-}) {
-  if (!value) {
-    return (
-      <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
-        {title}: not uploaded
-      </div>
-    );
+function buildInitialStatuses(document: EmployeeDocument | null) {
+  if (!document) {
+    return {};
   }
 
+  return REVIEWABLE_DOCUMENT_FIELDS.reduce(
+    (accumulator, field) => {
+      const currentStatus = document[
+        field.statusKey as keyof EmployeeDocument
+      ] as DocumentVerificationStatus | undefined;
+
+      accumulator[field.statusKey] = currentStatus ?? "PENDING_REVIEW";
+      return accumulator;
+    },
+    {} as Record<string, DocumentVerificationStatus>,
+  );
+}
+
+function previewLinkLabel(value: string) {
+  return value.startsWith("data:") ? "Open uploaded file" : "Open file";
+}
+
+function isImagePreview(field: ReviewEntry) {
+  return (
+    field.previewKind === "image" ||
+    field.fileUrl.startsWith("data:image/") ||
+    /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(field.fileUrl)
+  );
+}
+
+function ReviewableFileCard({
+  field,
+  canReview,
+  isSubmitting,
+  onStatusChange,
+}: {
+  field: ReviewEntry;
+  canReview: boolean;
+  isSubmitting: boolean;
+  onStatusChange: (statusKey: string, status: DocumentVerificationStatus) => void;
+}) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-medium text-slate-900">{title}</p>
-        <a
-          href={value}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1 text-xs font-medium text-cyan-700 hover:text-cyan-800"
-        >
-          {previewLabel(value)}
-          <ExternalLink className="h-3.5 w-3.5" />
-        </a>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-slate-900">{field.label}</p>
+          <p className="mt-1 text-xs text-slate-500">
+            {field.uploaded ? "Uploaded file available for verification" : "Not uploaded yet"}
+          </p>
+        </div>
+        <Badge className={getDocumentVerificationBadgeClass(field.status)}>
+          {formatDocumentVerificationStatus(field.status)}
+        </Badge>
       </div>
-      <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
-        <Image
-          src={value}
-          alt={title}
-          width={720}
-          height={420}
-          unoptimized
-          className="h-56 w-full object-contain"
-        />
+
+      <div className="mt-4 space-y-3">
+        {field.uploaded ? (
+          isImagePreview(field) ? (
+            <Image
+              src={field.fileUrl}
+              alt={field.label}
+              width={960}
+              height={540}
+              unoptimized
+              className="h-56 w-full rounded-2xl border border-slate-200 object-contain bg-slate-50"
+            />
+          ) : (
+            <a
+              href={field.fileUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm font-medium text-cyan-700"
+            >
+              <FileText className="h-4 w-4" />
+              {previewLinkLabel(field.fileUrl)}
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          )
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+            No file uploaded for this document.
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+            Verification status
+          </p>
+          <Select
+            value={field.status}
+            onValueChange={(value) =>
+              onStatusChange(field.statusKey, value as DocumentVerificationStatus)
+            }
+            disabled={!canReview || isSubmitting}
+          >
+            <SelectTrigger className="h-11 rounded-2xl">
+              <SelectValue placeholder="Select status" />
+            </SelectTrigger>
+            <SelectContent>
+              {DOCUMENT_VERIFICATION_STATUSES.map((status) => (
+                <SelectItem key={status} value={status}>
+                  {formatDocumentVerificationStatus(status)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
     </div>
   );
@@ -85,32 +181,94 @@ export function EmployeeDocumentReviewSheet({
   onOpenChange,
   onReview,
 }: DocumentReviewSheetProps) {
-  const [remarkByDocument, setRemarkByDocument] = React.useState<
-    Record<string, string>
-  >({});
+  const [draftStatuses, setDraftStatuses] = React.useState<
+    Record<string, DocumentVerificationStatus>
+  >(buildInitialStatuses(document));
+  const [draftRemark, setDraftRemark] = React.useState(
+    document?.reviewRemark ?? "",
+  );
 
-  const status = document?.reviewStatus ?? "PENDING";
-  const pending = status === "PENDING";
-  const educationEntries = document?.educationEntries ?? [];
-  const experienceEntries = document?.experienceEntries ?? [];
-  const activeRemark =
-    document?.id
-      ? (remarkByDocument[document.id] ?? document.reviewRemark ?? "")
-      : "";
+  const reviewEntries = React.useMemo<ReviewEntry[]>(() => {
+    if (!document) {
+      return [];
+    }
+
+    return REVIEWABLE_DOCUMENT_FIELDS.map((field) => {
+      const fileUrl = String(
+        document[field.key as keyof EmployeeDocument] ?? "",
+      );
+      const status =
+        draftStatuses[field.statusKey] ||
+        (document[field.statusKey as keyof EmployeeDocument] as DocumentVerificationStatus) ||
+        "PENDING_REVIEW";
+
+      return {
+        ...field,
+        fileUrl,
+        status,
+        uploaded: Boolean(fileUrl.trim()),
+      };
+    });
+  }, [draftStatuses, document]);
+
+  const reviewableEntries = reviewEntries.filter(
+    (entry) => entry.uploaded || entry.status !== "PENDING_REVIEW",
+  );
+  const pendingEntries = reviewableEntries.filter(
+    (entry) => entry.status === "PENDING_REVIEW",
+  );
+  const overallStatus = getNextDocumentOverallStatus(
+    reviewableEntries.map((entry) => entry.status),
+  );
+  const sections = getReviewableDocumentSections();
+  const activeRemark = draftRemark ?? document?.reviewRemark ?? "";
+  const canSubmitReview =
+    !!document &&
+    canReview &&
+    !isSubmitting &&
+    reviewableEntries.length > 0 &&
+    pendingEntries.length === 0;
+
+  const submitReview = () => {
+    if (!document) {
+      return;
+    }
+
+    onReview(document.id!, {
+      reviewRemark: activeRemark,
+      overallStatus,
+      statusUpdates: reviewEntries.reduce((accumulator, entry) => {
+        accumulator[entry.statusKey] = entry.status;
+        return accumulator;
+      }, {} as Record<string, DocumentVerificationStatus>),
+    });
+  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="overflow-y-auto sm:!max-w-3xl">
+      <SheetContent side="right" className="overflow-y-auto sm:!max-w-5xl">
         <SheetHeader className="space-y-3 pr-10">
           <div className="flex flex-wrap items-center gap-3">
             <SheetTitle className="text-xl">
-              {document?.ownerName || document?.employeeName || document?.candidateName || "Document"}
+              {document?.ownerName ||
+                document?.employeeName ||
+                document?.candidateName ||
+                "Document"}
             </SheetTitle>
-            <Badge className={reviewBadgeClass(status)}>{status}</Badge>
+            <Badge
+              className={getDocumentVerificationBadgeClass(
+                document?.reviewStatus ?? "PENDING",
+              )}
+            >
+              {document?.reviewStatus ?? "PENDING"}
+            </Badge>
+            <Badge className={getDocumentVerificationBadgeClass(overallStatus)}>
+              Live: {overallStatus}
+            </Badge>
           </div>
           <SheetDescription>
-            Review the uploaded identity files, education proofs, and experience
-            attachments before approving or rejecting the record.
+            Review each uploaded document individually, then submit the final
+            outcome so the applicant can be notified by email.
           </SheetDescription>
         </SheetHeader>
 
@@ -121,10 +279,14 @@ export function EmployeeDocumentReviewSheet({
                 <p className="text-slate-500">
                   {document.documentOwnerType === "EMPLOYEE"
                     ? "Employee ID"
-                    : "Request ID"}
+                    : "Applicant ID"}
                 </p>
                 <p className="mt-1 font-medium text-slate-900">
-                  {document.ownerCode || document.employeeCode || document.applicantCode || "-"}
+                  {document.ownerCode ||
+                    document.employeeCode ||
+                    document.applicantCode ||
+                    document.applicantId ||
+                    "-"}
                 </p>
               </div>
               <div>
@@ -134,7 +296,10 @@ export function EmployeeDocumentReviewSheet({
                     : "Candidate Name"}
                 </p>
                 <p className="mt-1 font-medium text-slate-900">
-                  {document.ownerName || document.employeeName || document.candidateName || "-"}
+                  {document.ownerName ||
+                    document.employeeName ||
+                    document.candidateName ||
+                    "-"}
                 </p>
               </div>
               <div>
@@ -149,7 +314,8 @@ export function EmployeeDocumentReviewSheet({
                   {document.reviewRemark || "-"}
                 </p>
               </div>
-              {document.documentOwnerType === "APPLICANT" && document.linkedEmployeeCode ? (
+              {document.documentOwnerType === "APPLICANT" &&
+              document.linkedEmployeeCode ? (
                 <div>
                   <p className="text-slate-500">Linked Employee</p>
                   <p className="mt-1 font-medium text-slate-900">
@@ -168,176 +334,220 @@ export function EmployeeDocumentReviewSheet({
             </section>
 
             <section className="space-y-4">
-              <div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                  Identity documents
-                </h3>
-              </div>
-              <div className="grid gap-4">
-                <FilePreview title="Aadhaar Card" value={document.aadhaarFileUrl ?? null} />
-                <FilePreview title="PAN Card" value={document.panFileUrl ?? null} />
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+                Personal information
+              </h3>
+              <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700 sm:grid-cols-2">
+                <div>
+                  <p className="text-slate-500">Date of Birth</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {document.dateOfBirth || "-"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-500">Gender</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {document.gender || "-"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-500">Email</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {document.email || "-"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-500">Mobile Number</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {document.mobileNumber || "-"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-500">Marital Status</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {document.maritalStatus || "-"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-500">Nationality</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {document.nationality || "-"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-500">Applied Position</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {document.appliedPosition || "-"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-500">Qualification</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {document.qualification || "-"}
+                  </p>
+                </div>
               </div>
             </section>
 
             <section className="space-y-4">
               <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                Education entries
+                Address information
               </h3>
-              <div className="space-y-3">
-                {educationEntries.length ? (
-                  educationEntries.map((entry, index) => (
-                    <div
-                      key={`${entry.degree || "education"}-${index}`}
-                      className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-                    >
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div>
-                          <p className="text-xs uppercase text-slate-500">Degree</p>
-                          <p className="mt-1 font-medium text-slate-900">
-                            {entry.degree || "-"}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs uppercase text-slate-500">College</p>
-                          <p className="mt-1 font-medium text-slate-900">
-                            {entry.college || "-"}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs uppercase text-slate-500">Year</p>
-                          <p className="mt-1 font-medium text-slate-900">
-                            {entry.year || "-"}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs uppercase text-slate-500">Marks</p>
-                          <p className="mt-1 font-medium text-slate-900">
-                            {typeof entry.marks === "number" ? entry.marks : "-"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-4">
-                        <FilePreview
-                          title={`Marksheet ${index + 1}`}
-                          value={entry.marksheetFileUrl ?? null}
-                        />
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
-                    No education records uploaded.
-                  </div>
-                )}
+              <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <p className="text-slate-500">Current Address</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {document.currentAddress || "-"}
+                  </p>
+                </div>
+                <div className="sm:col-span-2">
+                  <p className="text-slate-500">Permanent Address</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {document.permanentAddress || "-"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-500">City</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {document.city || "-"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-500">State</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {document.state || "-"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-500">Postal Code</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {document.postalCode || "-"}
+                  </p>
+                </div>
               </div>
             </section>
 
             <section className="space-y-4">
               <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                Experience entries
+                Declaration
               </h3>
-              <div className="space-y-3">
-                {experienceEntries.length ? (
-                  experienceEntries.map((entry, index) => (
-                    <div
-                      key={`${entry.previousCompanyName || "experience"}-${index}`}
-                      className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-                    >
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div>
-                          <p className="text-xs uppercase text-slate-500">
-                            Total Experience
-                          </p>
-                          <p className="mt-1 font-medium text-slate-900">
-                            {entry.totalExperience || "-"}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs uppercase text-slate-500">
-                            Previous Company
-                          </p>
-                          <p className="mt-1 font-medium text-slate-900">
-                            {entry.previousCompanyName || "-"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-4 grid gap-4">
-                        <FilePreview
-                          title={`Experience Letter ${index + 1}`}
-                          value={entry.experienceLetterFileUrl ?? null}
-                        />
-                        <FilePreview
-                          title={`Salary Slip 1 ${index + 1}`}
-                          value={entry.salarySlip1FileUrl ?? null}
-                        />
-                        <FilePreview
-                          title={`Salary Slip 2 ${index + 1}`}
-                          value={entry.salarySlip2FileUrl ?? null}
-                        />
-                        <FilePreview
-                          title={`Salary Slip 3 ${index + 1}`}
-                          value={entry.salarySlip3FileUrl ?? null}
-                        />
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
-                    No experience records uploaded.
-                  </div>
-                )}
+              <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700 sm:grid-cols-3">
+                <div>
+                  <p className="text-slate-500">Information Accurate</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {document.declarationInfoAccurate ? "Yes" : "No"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-500">Verification Authorized</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {document.declarationAuthorizeVerification ? "Yes" : "No"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-500">Policies Accepted</p>
+                  <p className="mt-1 font-medium text-slate-900">
+                    {document.declarationAgreePolicies ? "Yes" : "No"}
+                  </p>
+                </div>
               </div>
             </section>
+
+            {sections.map((section) => {
+              const fields = reviewEntries.filter(
+                (entry) => entry.section === section.title,
+              );
+
+              if (!fields.length) {
+                return null;
+              }
+
+              return (
+                <section key={section.title} className="space-y-4">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+                    {section.title}
+                  </h3>
+                  <div className="grid gap-4">
+                    {fields.map((field) => (
+                      <ReviewableFileCard
+                        key={field.key}
+                        field={field}
+                        canReview={canReview}
+                        isSubmitting={isSubmitting}
+                        onStatusChange={(statusKey, status) =>
+                          setDraftStatuses((current) => ({
+                            ...current,
+                            [statusKey]: status,
+                          }))
+                        }
+                      />
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
 
             <section className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                  Review note
-                </h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  Add a short approval or rejection note for the applicant.
-                </p>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+                    Review note
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Add a short approval, rejection, or reupload remark for the applicant.
+                  </p>
+                </div>
+                <Badge className={getDocumentVerificationBadgeClass(overallStatus)}>
+                  Final outcome: {overallStatus}
+                </Badge>
               </div>
               <Textarea
                 value={activeRemark}
-                onChange={(event) => {
-                  if (!document?.id) return;
-
-                  setRemarkByDocument((current) => ({
-                    ...current,
-                    [document.id!]: event.target.value,
-                  }));
-                }}
+                onChange={(event) => setDraftRemark(event.target.value)}
                 placeholder="Write a review remark"
                 className="min-h-28 rounded-2xl"
-                disabled={!canReview || !pending || isSubmitting}
+                disabled={!canReview || isSubmitting}
               />
+              {pendingEntries.length > 0 ? (
+                <p className="text-sm text-amber-700">
+                  {pendingEntries.length} uploaded document
+                  {pendingEntries.length > 1 ? "s are" : " is"} still pending
+                  review.
+                </p>
+              ) : null}
             </section>
           </div>
         ) : null}
 
-        {document && canReview && pending && (
+        {document && canReview && (
           <div className="border-t border-slate-200 p-4">
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button
                 className="bg-emerald-600 hover:bg-emerald-700"
-                disabled={isSubmitting}
-                onClick={() =>
-                  onReview(document.id!, "APPROVED", activeRemark)
-                }
+                disabled={!canSubmitReview}
+                onClick={submitReview}
               >
                 <Check className="mr-2 h-4 w-4" />
-                Approve
+                Submit Review
               </Button>
+              {document.reviewStatus === "APPROVED" &&
+              !document.linkedEmployeeId ? (
+                <Button asChild className="bg-cyan-600 hover:bg-cyan-700">
+                  <Link
+                    href={`/employee-profiles/create?sourceApplicantDocumentId=${document.id}`}
+                  >
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Create Employee
+                  </Link>
+                </Button>
+              ) : null}
               <Button
                 variant="destructive"
                 disabled={isSubmitting}
-                onClick={() =>
-                  onReview(document.id!, "REJECTED", activeRemark)
-                }
+                onClick={() => onOpenChange(false)}
               >
                 <X className="mr-2 h-4 w-4" />
-                Reject
+                Close
               </Button>
             </div>
           </div>

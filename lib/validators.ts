@@ -9,6 +9,7 @@ import {
 } from "@prisma/client";
 import { z } from "zod";
 import { DOCUMENT_REVIEW_STATUSES } from "./document-review";
+import { DOCUMENT_VERIFICATION_STATUSES } from "./employee-document-review";
 
 const EOD_APPROVAL_STATUSES = ["PENDING", "APPROVED", "REJECTED"] as const;
 const employeeDocumentOwnerTypes = ["APPLICANT", "EMPLOYEE"] as const;
@@ -38,6 +39,40 @@ const recruitmentIntakeSources = [
   "WALK_IN",
   "OTHER",
 ] as const;
+const recruitmentApplicantPipelineStatuses = [
+  "APPLIED",
+  "SCREENING",
+  "SHORTLISTED",
+  "INTERVIEW_SCHEDULED",
+  "INTERVIEW_IN_PROGRESS",
+  "INTERVIEW_COMPLETED",
+  "SELECTED",
+  "REJECTED",
+  "OFFER_PENDING",
+] as const;
+const interviewRoundTypes = [
+  "HR_ROUND",
+  "TECHNICAL_ROUND_1",
+  "TECHNICAL_ROUND_2",
+  "MANAGERIAL_ROUND",
+  "FINAL_HR_ROUND",
+] as const;
+const interviewModes = ["ONLINE", "OFFLINE"] as const;
+const interviewStatuses = [
+  "SCHEDULED",
+  "RESCHEDULED",
+  "IN_PROGRESS",
+  "COMPLETED",
+  "CANCELLED",
+  "NO_SHOW",
+] as const;
+const interviewRecommendationStatuses = [
+  "PROCEED_TO_NEXT_ROUND",
+  "SELECTED",
+  "REJECTED",
+  "ON_HOLD",
+] as const;
+const employeeDocumentContexts = ["SELF_SERVICE", "ONBOARDING"] as const;
 
 /* ---------------- AUTH ---------------- */
 export const loginFormSchema = z.object({
@@ -128,16 +163,89 @@ export const employeeDocumentSchema = z
   .object({
     id: z.string().optional(),
     documentOwnerType: z.enum(employeeDocumentOwnerTypes).default("APPLICANT"),
+    documentContext: z.enum(employeeDocumentContexts).default("SELF_SERVICE"),
+    sourceInterviewApplicantId: z.string().optional(),
 
     applicantId: z.string().optional(),
     applicantCode: z.string().optional(),
     candidateName: z.string().optional(),
+    dateOfBirth: z.string().optional(),
+    gender: z.string().optional(),
+    email: z.string().optional(),
+    mobileNumber: z.string().optional(),
     employeeId: z.string().optional(),
     employeeCode: z.string().optional(),
     employeeName: z.string().optional(),
     linkedEmployeeId: z.string().optional(),
     linkedEmployeeCode: z.string().optional(),
     linkedEmployeeName: z.string().optional(),
+    appliedPosition: z.string().optional(),
+    skillsLevel: z.string().optional(),
+    totalExperience: z.string().optional(),
+    relevantExperience: z.string().optional(),
+    qualification: z.string().optional(),
+    maritalStatus: z.string().optional(),
+    nationality: z.string().optional(),
+    passportPhotoFileUrl: z.string().optional(),
+    passportPhotoStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
+    aadhaarStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
+    panStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
+    passportFileUrl: z.string().optional(),
+    passportStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
+    drivingLicenseFileUrl: z.string().optional(),
+    drivingLicenseStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
+    voterIdFileUrl: z.string().optional(),
+    voterIdStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
+    currentAddress: z.string().optional(),
+    permanentAddress: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    postalCode: z.string().optional(),
+    addressProofFileUrl: z.string().optional(),
+    addressProofStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
+    highestQualification: z.string().optional(),
+    institutionName: z.string().optional(),
+    passingYear: z.string().optional(),
+    class10MarksheetFileUrl: z.string().optional(),
+    class10MarksheetStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
+    class12MarksheetFileUrl: z.string().optional(),
+    class12MarksheetStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
+    highestQualificationFileUrl: z.string().optional(),
+    highestQualificationStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
+    additionalDegreesFileUrl: z.string().optional(),
+    additionalDegreesStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
+    professionalCertificationsFileUrl: z.string().optional(),
+    professionalCertificationsStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
+    experienceLetterFileUrl: z.string().optional(),
+    experienceLetterStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
+    relievingLetterFileUrl: z.string().optional(),
+    relievingLetterStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
+    salarySlip1FileUrl: z.string().optional(),
+    salarySlip2FileUrl: z.string().optional(),
+    salarySlip3FileUrl: z.string().optional(),
+    salarySlipsStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
+    previousOfferLetterFileUrl: z.string().optional(),
+    previousOfferLetterStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
+    promotionAppraisalLettersFileUrl: z.string().optional(),
+    promotionAppraisalLettersStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
+    bankName: z.string().optional(),
+    accountHolderName: z.string().optional(),
+    accountNumber: z.string().optional(),
+    ifscCode: z.string().optional(),
+    branchName: z.string().optional(),
+    bankProofFileUrl: z.string().optional(),
+    bankProofStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
+    uanNumber: z.string().optional(),
+    pfPassbookFileUrl: z.string().optional(),
+    pfPassbookStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
+    pfTransferDocumentsFileUrl: z.string().optional(),
+    pfTransferDocumentsStatus: z.enum(DOCUMENT_VERIFICATION_STATUSES).optional(),
+    emergencyContactName: z.string().optional(),
+    emergencyContactRelationship: z.string().optional(),
+    emergencyContactNumber: z.string().optional(),
+    declarationInfoAccurate: z.boolean().optional(),
+    declarationAuthorizeVerification: z.boolean().optional(),
+    declarationAgreePolicies: z.boolean().optional(),
 
     // ---------------- DOCUMENTS ----------------
     aadhaarNumber: z.string().min(1, "Aadhaar number is required"),
@@ -195,20 +303,75 @@ export const employeeDocumentSchema = z
         });
       }
 
-      if (!data.applicantCode?.trim()) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Request ID is required",
-          path: ["applicantCode"],
-        });
-      }
-
       if (!data.candidateName?.trim()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: "Candidate name is required",
           path: ["candidateName"],
         });
+      }
+    }
+
+    if (data.documentContext === "ONBOARDING") {
+      const requiredFields = [
+        ["candidateName", "Full name is required"],
+        ["dateOfBirth", "Date of birth is required"],
+        ["gender", "Gender is required"],
+        ["email", "Personal email address is required"],
+        ["mobileNumber", "Mobile number is required"],
+        ["maritalStatus", "Marital status is required"],
+        ["nationality", "Nationality is required"],
+        ["passportPhotoFileUrl", "Passport size photograph is required"],
+        ["aadhaarFileUrl", "Aadhaar card is required"],
+        ["panFileUrl", "PAN card is required"],
+        ["currentAddress", "Current address is required"],
+        ["permanentAddress", "Permanent address is required"],
+        ["city", "City is required"],
+        ["state", "State is required"],
+        ["postalCode", "Postal code is required"],
+        ["addressProofFileUrl", "Address proof is required"],
+        ["highestQualification", "Highest qualification is required"],
+        ["institutionName", "Institution name is required"],
+        ["passingYear", "Passing year is required"],
+        ["class10MarksheetFileUrl", "Class 10 mark sheet is required"],
+        ["class12MarksheetFileUrl", "Class 12 mark sheet is required"],
+        ["highestQualificationFileUrl", "Highest qualification degree or certificate is required"],
+        ["bankName", "Bank name is required"],
+        ["accountHolderName", "Account holder name is required"],
+        ["accountNumber", "Account number is required"],
+        ["ifscCode", "IFSC code is required"],
+        ["branchName", "Branch name is required"],
+        ["bankProofFileUrl", "Bank proof document is required"],
+        ["emergencyContactName", "Emergency contact name is required"],
+        ["emergencyContactRelationship", "Emergency contact relationship is required"],
+        ["emergencyContactNumber", "Emergency contact number is required"],
+      ] as const;
+
+      for (const [field, message] of requiredFields) {
+        const value = data[field];
+        if (typeof value !== "string" || !value.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message,
+            path: [field],
+          });
+        }
+      }
+
+      const requiredChecks = [
+        ["declarationInfoAccurate", "Please confirm that all information provided is accurate."],
+        ["declarationAuthorizeVerification", "Please authorize document verification and employment history checks."],
+        ["declarationAgreePolicies", "Please agree to the company onboarding policies and terms."],
+      ] as const;
+
+      for (const [field, message] of requiredChecks) {
+        if (data[field] !== true) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message,
+            path: [field],
+          });
+        }
       }
     }
 
@@ -234,6 +397,14 @@ export const employeeDocumentSchema = z
     // Experience validation
     if (data.experienceType !== ExperienceType.EXPERIENCED) {
       return;
+    }
+
+    if (!data.uanNumber?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "UAN number is required for experienced candidates",
+        path: ["uanNumber"],
+      });
     }
 
     if (!data.experienceEntries?.length) {
@@ -262,6 +433,25 @@ export const employeeDocumentSchema = z
         });
       }
     });
+
+    const requiredExperiencedFiles = [
+      ["experienceLetterFileUrl", "Experience letter is required"],
+      ["relievingLetterFileUrl", "Relieving letter is required"],
+      ["salarySlip1FileUrl", "Salary slip 1 is required"],
+      ["salarySlip2FileUrl", "Salary slip 2 is required"],
+      ["salarySlip3FileUrl", "Salary slip 3 is required"],
+    ] as const;
+
+    for (const [field, message] of requiredExperiencedFiles) {
+      const value = data[field];
+      if (typeof value !== "string" || !value.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message,
+          path: [field],
+        });
+      }
+    }
   });
 
 /* ---------------- EMPLOYEE PROFILE ---------------- */
@@ -271,7 +461,7 @@ export const employeeProfileSchema = z.object({
   managerId: z.union([z.string().uuid(), z.literal("")]).optional(),
   employeeName: z.string().trim().min(1, "Employee name is required"),
   employeeCode: z.string().optional(),
-  email: z.string().min(1, "Email Id is required"),
+  email: z.string().trim().min(1, "Email Id is required"),
   password: z.union([
     z.string().min(6, "Password should be at least 6 characters long"),
     z.literal(""),
@@ -355,6 +545,7 @@ export const createEmployerSchema = employerSchema.extend({
 /* ---------------- RECRUITMENT ---------------- */
 export const recruitmentSchema = z.object({
   id: z.string().optional(),
+  sourceInterviewApplicantId: z.string().optional(),
   applicantPortalId: z.string().optional(),
   applicantUsername: z.string().optional(),
   applicantPasswordHash: z.string().optional(),
@@ -403,6 +594,7 @@ export const recruitmentSchema = z.object({
   feedbackDate: z.string().optional(),
   internalStatus: z.enum(recruitmentPipelineStatuses).optional(),
   clientFinalStatus: z.enum(recruitmentPipelineStatuses).optional(),
+  pipelineStatus: z.enum(recruitmentApplicantPipelineStatuses).optional(),
   updatedToCandidateDate: z.string().optional(),
   offeredDate: z.string().optional(),
   offerAccepted: z.enum(recruitmentTriStatuses).optional(),
@@ -430,6 +622,49 @@ export const recruitmentIntakeSchema = z.object({
   experience: z.string().min(1, "Experience is required"),
   appliedPosition: z.string().min(1, "Applied position is required"),
   source: z.enum(recruitmentIntakeSources),
+  pipelineStatus: z.enum(recruitmentApplicantPipelineStatuses).optional(),
+  createdAt: z.string().nullable().optional(),
+  updatedAt: z.string().nullable().optional(),
+});
+
+/* ---------------- INTERVIEW MANAGEMENT ---------------- */
+const interviewAuditEntrySchema = z.object({
+  id: z.string().optional(),
+  action: z.string().min(1, "Action is required"),
+  description: z.string().min(1, "Description is required"),
+  actorId: z.string().optional(),
+  actorName: z.string().optional(),
+  actorRole: z.string().optional(),
+  createdAt: z.string().optional(),
+});
+
+export const interviewSchema = z.object({
+  id: z.string().optional(),
+  interviewId: z.string().optional(),
+  applicantId: z.string().min(1, "Applicant is required"),
+  applicantName: z.string().min(1, "Applicant name is required"),
+  appliedPosition: z.string().min(1, "Applied position is required"),
+  interviewRound: z.enum(interviewRoundTypes),
+  interviewerId: z.string().min(1, "Interviewer is required"),
+  interviewerName: z.string().min(1, "Interviewer name is required"),
+  interviewerJobRole: z.string().optional(),
+  scheduledDate: z.string().min(1, "Scheduled date is required"),
+  scheduledTime: z.string().min(1, "Scheduled time is required"),
+  interviewMode: z.enum(interviewModes),
+  meetingLinkOrLocation: z.string().min(1, "Meeting link or location is required"),
+  status: z.enum(interviewStatuses),
+  feedback: z.string().optional(),
+  ratingScore: z.coerce.number().min(0).max(10).nullable().optional(),
+  recommendation: z.enum(interviewRecommendationStatuses).nullable().optional(),
+  strengths: z.string().optional(),
+  weaknesses: z.string().optional(),
+  createdBy: z.string().optional(),
+  createdByName: z.string().optional(),
+  updatedBy: z.string().optional(),
+  updatedByName: z.string().optional(),
+  completedAt: z.string().nullable().optional(),
+  history: z.array(interviewAuditEntrySchema).optional(),
+  statusNote: z.string().optional(),
   createdAt: z.string().nullable().optional(),
   updatedAt: z.string().nullable().optional(),
 });

@@ -277,7 +277,7 @@ export async function loginFormUser(prevState: unknown, formData: FormData) {
             : employerMatched
               ? "/dashboard"
               : applicantMatched
-                ? "/applicant-dashboard"
+                ? "/applicant-dashboard/documents"
           : "/dashboard",
     };
   } catch (error) {

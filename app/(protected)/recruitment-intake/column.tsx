@@ -50,6 +50,30 @@ export const getRecruitmentIntakeColumns = ({
     ),
   },
   {
+    accessorKey: "pipelineStatus",
+    header: "Pipeline",
+    cell: ({ row }) => {
+      const status = row.original.pipelineStatus || "APPLIED";
+      const tones: Record<string, string> = {
+        APPLIED: "bg-slate-100 text-slate-700",
+        SCREENING: "bg-amber-100 text-amber-700",
+        SHORTLISTED: "bg-cyan-100 text-cyan-700",
+        INTERVIEW_SCHEDULED: "bg-indigo-100 text-indigo-700",
+        INTERVIEW_IN_PROGRESS: "bg-blue-100 text-blue-700",
+        INTERVIEW_COMPLETED: "bg-emerald-100 text-emerald-700",
+        SELECTED: "bg-emerald-500 text-white",
+        REJECTED: "bg-rose-500 text-white",
+        OFFER_PENDING: "bg-violet-100 text-violet-700",
+      };
+
+      return (
+        <Badge className={tones[status] || "bg-slate-100 text-slate-700"}>
+          {status.replaceAll("_", " ")}
+        </Badge>
+      );
+    },
+  },
+  {
     accessorKey: "resumeUrl",
     header: "Resume",
     cell: ({ row }) =>

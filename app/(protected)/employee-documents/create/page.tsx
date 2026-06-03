@@ -1,4 +1,3 @@
-import { auth } from "@/auth";
 import EmployeeDocumentForm from "@/components/employee-documents/employee-document-form";
 import { Button } from "@/components/ui/button";
 import {
@@ -7,6 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { getSelectedInterviewCandidates } from "@/lib/actions/interviews";
 import { isCurrentEmployeeHr } from "@/lib/employee-job-role";
 import { canAccess } from "@/lib/rbac";
 import Link from "next/link";
@@ -16,7 +16,10 @@ import { ArrowLeft, FilePlus2 } from "lucide-react";
 const EmployeeDocumentCreatePage = async ({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string | string[] }>;
+  searchParams: Promise<{
+    from?: string | string[];
+    sourceInterviewApplicantId?: string | string[];
+  }>;
 }) => {
   const route = "/employee-documents";
   const canCreate = await canAccess(route, "create");
@@ -25,14 +28,21 @@ const EmployeeDocumentCreatePage = async ({
     redirect("/404");
   }
 
-  const session = await auth();
   const isHrEmployee = await isCurrentEmployeeHr();
-  const isSelfServiceEmployee =
-    session?.user?.role?.toLowerCase() === "employee" && !isHrEmployee;
+  if (!isHrEmployee) {
+    redirect("/404");
+  }
 
-  const { from } = await searchParams;
-  const openedFromDashboard = from === "employee-dashboard";
-  const backHref = openedFromDashboard ? "/employee-dashboard" : "/employee-documents";
+  const [selectedCandidates, params] = await Promise.all([
+    getSelectedInterviewCandidates(),
+    searchParams,
+  ]);
+  const { sourceInterviewApplicantId } = params;
+  const backHref = "/employee-documents";
+  const selectedInterviewApplicantId =
+    typeof sourceInterviewApplicantId === "string"
+      ? sourceInterviewApplicantId
+      : sourceInterviewApplicantId?.[0] || "";
 
   return (
     <Card className="rounded-3xl border border-white/60 bg-white/80 shadow-xl backdrop-blur-md">
@@ -46,12 +56,10 @@ const EmployeeDocumentCreatePage = async ({
 
             <div>
               <CardTitle className="text-2xl font-bold text-slate-800">
-                {isSelfServiceEmployee ? "Add Employee Document" : "Add Applicant Document"}
+                Add Applicant Document
               </CardTitle>
               <p className="mt-1 text-sm text-slate-500">
-                {isSelfServiceEmployee
-                  ? "Upload your personal documents for HR review"
-                  : "Upload and manage applicant documents before employee creation"}
+                Upload and manage applicant documents before employee creation
               </p>
             </div>
           </div>
@@ -73,7 +81,10 @@ const EmployeeDocumentCreatePage = async ({
         <EmployeeDocumentForm
           update={false}
           redirectTo={backHref}
-          mode={isSelfServiceEmployee ? "employee" : "applicant"}
+          mode="applicant"
+          selectedCandidates={selectedCandidates}
+          initialSelectedInterviewApplicantId={selectedInterviewApplicantId}
+          showApplicantSelection
         />
       </CardContent>
     </Card>

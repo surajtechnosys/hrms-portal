@@ -3,16 +3,25 @@
 import { auth } from "@/auth";
 import { DocumentReviewStatus, Prisma } from "@prisma/client";
 import { promises as fs } from "fs";
-import path from "path";
 import { revalidatePath } from "next/cache";
+import path from "path";
 
 import { EmployeeDocument } from "@/types";
 import type { RecruitmentApplicantOption } from "./recruitment";
+import { sendSystemEmail } from "../email";
 import {
   getRecruitmentApplications,
   markApplicantDocumentsSubmitted,
 } from "./recruitment";
 import { isHrJobRoleName } from "../employee-job-role";
+import {
+  DOCUMENT_VERIFICATION_STATUSES,
+  type DocumentVerificationStatus,
+  formatDocumentVerificationStatus,
+  getNextDocumentOverallStatus,
+  getUploadedReviewableDocumentFields,
+  REVIEWABLE_DOCUMENT_FIELDS,
+} from "../employee-document-review";
 import { prisma } from "../prisma";
 import { formatError } from "../utils";
 import { employeeDocumentSchema } from "../validators";
@@ -45,7 +54,7 @@ type ApplicantDocumentOption = {
   candidateName: string;
   mobileNumber: string;
   email: string;
-  reviewStatus: DocumentReviewStatus | "PENDING" | "APPROVED" | "REJECTED";
+  reviewStatus: string;
   linkedEmployeeId: string;
 };
 
@@ -171,29 +180,49 @@ type PrismaEmployeeDocumentRecord = Prisma.EmployeeDocumentGetPayload<{
   };
 }>;
 
+function getDocumentPayload(record: PrismaEmployeeDocumentRecord) {
+  return (record.documentPayload ?? {}) as Partial<EmployeeDocument>;
+}
+
 function mapPrismaEmployeeDocument(
   record: PrismaEmployeeDocumentRecord,
 ): EmployeeDocument {
+  const payload = getDocumentPayload(record);
+  const documentOwnerType =
+    record.documentOwnerType ?? (record.employeeId ? "EMPLOYEE" : "APPLICANT");
+  const ownerName =
+    documentOwnerType === "EMPLOYEE"
+      ? record.employee?.employeeName ?? payload.candidateName ?? ""
+      : record.candidateName ?? payload.candidateName ?? "";
+  const ownerCode =
+    documentOwnerType === "EMPLOYEE"
+      ? record.employee?.employeeCode ?? record.employeeCode ?? ""
+      : payload.applicantCode ?? record.applicantId ?? payload.applicantId ?? "";
+
   return {
+    ...payload,
     id: record.id,
-    documentOwnerType: "EMPLOYEE",
-    applicantId: "",
-    applicantCode: "",
-    candidateName: "",
-    employeeId: record.employeeId,
-    employeeCode: record.employee.employeeCode,
-    employeeName: record.employee.employeeName,
-    aadhaarNumber: record.aadhaarNumber,
-    aadhaarFileUrl: record.aadhaarFileUrl ?? "",
-    panNumber: record.panNumber,
-    panFileUrl: record.panFileUrl ?? "",
+    documentOwnerType,
+    documentContext:
+      payload.documentContext ??
+      (documentOwnerType === "EMPLOYEE" ? "SELF_SERVICE" : "ONBOARDING"),
+    applicantId: record.applicantId ?? payload.applicantId ?? "",
+    applicantCode: payload.applicantCode ?? "",
+    candidateName: record.candidateName ?? payload.candidateName ?? "",
+    employeeId: record.employeeId ?? "",
+    employeeCode: record.employee?.employeeCode ?? payload.employeeCode ?? record.employeeCode ?? "",
+    employeeName: record.employee?.employeeName ?? payload.employeeName ?? "",
+    aadhaarNumber: record.aadhaarNumber ?? payload.aadhaarNumber ?? "",
+    aadhaarFileUrl: record.aadhaarFileUrl ?? payload.aadhaarFileUrl ?? "",
+    panNumber: record.panNumber ?? payload.panNumber ?? "",
+    panFileUrl: record.panFileUrl ?? payload.panFileUrl ?? "",
     educationEntries: Array.isArray(record.educationEntries)
       ? (record.educationEntries as EmployeeDocument["educationEntries"])
-      : [],
-    experienceType: record.experienceType,
+      : (payload.educationEntries ?? []),
+    experienceType: record.experienceType ?? payload.experienceType ?? "FRESHER",
     experienceEntries: Array.isArray(record.experienceEntries)
       ? (record.experienceEntries as EmployeeDocument["experienceEntries"])
-      : [],
+      : (payload.experienceEntries ?? []),
     reviewStatus: record.reviewStatus,
     reviewRemark: record.reviewRemark ?? "",
     reviewedAt: record.reviewedAt?.toISOString() ?? "",
@@ -201,9 +230,9 @@ function mapPrismaEmployeeDocument(
     status: record.status,
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
-    applicantName: record.employee.employeeName,
-    ownerName: record.employee.employeeName,
-    ownerCode: record.employee.employeeCode,
+    applicantName: ownerName,
+    ownerName,
+    ownerCode,
   };
 }
 
@@ -275,11 +304,130 @@ function normalizeApplicantDocument(input: EmployeeDocument): EmployeeDocument {
   };
 }
 
+async function getApplicantEmailForReview(record: EmployeeDocument) {
+  const recruitmentRecord = (await getRecruitmentApplications()).find(
+    (item) =>
+      item.id === record.applicantId ||
+      item.requestId === record.applicantCode ||
+      item.serialNumber === record.applicantCode,
+  );
+
+  return recruitmentRecord?.email?.trim() || record.email?.trim() || "";
+}
+
+function buildApplicantDocumentReviewEmail(
+  record: EmployeeDocument,
+  reviewerName: string,
+  overallStatus: string,
+) {
+  const reviewedFields = getUploadedReviewableDocumentFields(record);
+  const completedFields = reviewedFields.filter(
+    (field) => field.uploaded || field.status !== "PENDING_REVIEW",
+  );
+  const statusLabel = formatDocumentVerificationStatus(overallStatus);
+  const subject =
+    overallStatus === "APPROVED"
+      ? `Your onboarding documents have been approved`
+      : overallStatus === "REUPLOAD_REQUESTED"
+        ? `Action required: re-upload your onboarding documents`
+        : `Your onboarding documents review has been completed`;
+  const actionMessage =
+    overallStatus === "APPROVED"
+      ? "Your documents are approved. Thank you for completing the review process."
+      : overallStatus === "REUPLOAD_REQUESTED"
+        ? "Please re-upload the requested documents from your applicant dashboard and resubmit the form."
+        : "Some documents were not approved during review. Please read the remarks carefully.";
+
+  const rows = completedFields
+    .map(
+      (field) => `
+        <tr>
+          <td style="padding:8px 0;color:#64748b">${field.label}</td>
+          <td style="padding:8px 0;font-weight:600">${formatDocumentVerificationStatus(
+            field.status,
+          )}</td>
+        </tr>
+      `,
+    )
+    .join("");
+
+  const text = [
+    `Hello ${record.candidateName || "Applicant"},`,
+    "",
+    `Your onboarding document review has been completed.`,
+    `Overall status: ${statusLabel}`,
+    "",
+    actionMessage,
+    "",
+    "Document statuses:",
+    ...completedFields.map(
+      (field) => `- ${field.label}: ${formatDocumentVerificationStatus(field.status)}`,
+    ),
+    "",
+    `Reviewed by: ${reviewerName}`,
+    record.reviewRemark ? `Review remark: ${record.reviewRemark}` : undefined,
+    "",
+    "Regards,",
+    "HRMS Portal",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;line-height:1.6;color:#0f172a">
+      <p>Hello ${record.candidateName || "Applicant"},</p>
+      <p>Your onboarding document review has been completed.</p>
+      <p><strong>Overall status:</strong> ${statusLabel}</p>
+      <p>${actionMessage}</p>
+      <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:16px 0;width:100%;max-width:640px">
+        ${rows}
+      </table>
+      ${
+        record.reviewRemark
+          ? `<p><strong>Review remark:</strong> ${record.reviewRemark}</p>`
+          : ""
+      }
+      <p><strong>Reviewed by:</strong> ${reviewerName}</p>
+      <p>Regards,<br />HRMS Portal</p>
+    </div>
+  `;
+
+  return { subject, text, html };
+}
+
+async function notifyApplicantDocumentReview(
+  record: EmployeeDocument,
+  reviewerName: string,
+  overallStatus: string,
+) {
+  const applicantEmail = await getApplicantEmailForReview(record);
+
+  if (!applicantEmail) {
+    return;
+  }
+
+  const emailContent = buildApplicantDocumentReviewEmail(
+    record,
+    reviewerName,
+    overallStatus,
+  );
+
+  await sendSystemEmail({
+    to: applicantEmail,
+    subject: emailContent.subject,
+    text: emailContent.text,
+    html: emailContent.html,
+  });
+}
+
 function normalizeEmployeeDocumentForPrisma(
   input: EmployeeDocument,
   employee: NonNullable<CurrentDocumentContext["currentEmployee"]>,
-) {
+): Prisma.EmployeeDocumentUncheckedCreateInput {
   return {
+    documentOwnerType: "EMPLOYEE" as const,
+    applicantId: null,
+    candidateName: null,
     employeeId: employee.id,
     employeeCode: employee.employeeCode,
     aadhaarNumber: input.aadhaarNumber.trim(),
@@ -315,7 +463,11 @@ async function getApplicantDocumentOptionsBase(): Promise<ApplicantDocumentOptio
       return {
         id: record.id ?? "",
         applicantId: record.applicantId ?? "",
-        requestId: record.applicantCode ?? "",
+        requestId:
+          recruitmentRecord?.requestId ||
+          recruitmentRecord?.serialNumber ||
+          record.applicantId ||
+          "",
         candidateName: record.candidateName ?? "",
         mobileNumber: recruitmentRecord?.mobileNumber ?? "",
         email: recruitmentRecord?.email ?? "",
@@ -323,6 +475,7 @@ async function getApplicantDocumentOptionsBase(): Promise<ApplicantDocumentOptio
         linkedEmployeeId: record.linkedEmployeeId ?? "",
       };
     })
+    .filter((record) => !record.linkedEmployeeId)
     .sort((a, b) => a.candidateName.localeCompare(b.candidateName));
 }
 
@@ -348,11 +501,11 @@ export async function attachApplicantDocumentToEmployeeProfile(params: {
     throw new Error("Applicant document not found");
   }
 
-  const applicantRecord = mapApplicantDocument(records[index]);
+  const applicantDocument = mapApplicantDocument(records[index]);
 
   if (
-    applicantRecord.linkedEmployeeId &&
-    applicantRecord.linkedEmployeeId !== params.employeeId
+    applicantDocument.linkedEmployeeId &&
+    applicantDocument.linkedEmployeeId !== params.employeeId
   ) {
     throw new Error("This applicant document is already connected to another employee");
   }
@@ -363,35 +516,34 @@ export async function attachApplicantDocumentToEmployeeProfile(params: {
     data: {
       employeeId: params.employeeId,
       employeeCode: params.employeeCode,
-      aadhaarNumber: applicantRecord.aadhaarNumber,
-      aadhaarFileUrl: applicantRecord.aadhaarFileUrl || null,
-      panNumber: applicantRecord.panNumber,
-      panFileUrl: applicantRecord.panFileUrl || null,
+      aadhaarNumber: applicantDocument.aadhaarNumber,
+      aadhaarFileUrl: applicantDocument.aadhaarFileUrl || null,
+      panNumber: applicantDocument.panNumber,
+      panFileUrl: applicantDocument.panFileUrl || null,
       educationEntries:
-        (applicantRecord.educationEntries ?? []) as Prisma.InputJsonValue,
-      experienceType: applicantRecord.experienceType,
+        (applicantDocument.educationEntries ?? []) as Prisma.InputJsonValue,
+      experienceType: applicantDocument.experienceType,
       experienceEntries:
-        (applicantRecord.experienceEntries ?? []) as Prisma.InputJsonValue,
+        (applicantDocument.experienceEntries ?? []) as Prisma.InputJsonValue,
       reviewStatus:
-        applicantRecord.reviewStatus === "APPROVED"
+        applicantDocument.reviewStatus === "APPROVED"
           ? DocumentReviewStatus.APPROVED
           : DocumentReviewStatus.PENDING,
-      reviewRemark: applicantRecord.reviewRemark || null,
-      reviewedAt: applicantRecord.reviewedAt
-        ? new Date(applicantRecord.reviewedAt)
+      reviewRemark: applicantDocument.reviewRemark || null,
+      reviewedAt: applicantDocument.reviewedAt
+        ? new Date(applicantDocument.reviewedAt)
         : null,
-      remark: applicantRecord.remark || null,
-      status: applicantRecord.status,
+      remark: applicantDocument.remark || null,
+      status: applicantDocument.status,
     },
   });
 
   records[index] = normalizeApplicantDocument({
-    ...applicantRecord,
+    ...applicantDocument,
     linkedEmployeeId: params.employeeId,
     linkedEmployeeCode: params.employeeCode,
     linkedEmployeeName: params.employeeName,
   });
-
   await writeApplicantDocumentData(records);
 
   revalidatePath("/employee-documents");
@@ -449,16 +601,31 @@ export async function createEmployeeDocument(
         ...data,
         documentOwnerType: "APPLICANT",
         applicantId: context.currentApplicant.id,
-        applicantCode: context.currentApplicant.applicantCode,
         candidateName: context.currentApplicant.candidateName,
+        applicantCode: context.currentApplicant.applicantCode,
       });
       const records = await readApplicantDocumentData();
+      const existing = records.find(
+        (item) =>
+          item.applicantId === context.currentApplicant.id ||
+          item.sourceInterviewApplicantId === record.sourceInterviewApplicantId,
+      );
+
+      if (existing) {
+        return {
+          success: false,
+          message: "Applicant document already exists.",
+        };
+      }
 
       records.push(normalizeApplicantDocument(record));
       await writeApplicantDocumentData(records);
       await markApplicantDocumentsSubmitted(context.currentApplicant.id);
 
       revalidatePath("/applicant-dashboard");
+      revalidatePath("/applicant-dashboard/documents");
+      revalidatePath("/employee-documents");
+      revalidatePath("/recruitment");
 
       return {
         success: true,
@@ -493,6 +660,18 @@ export async function createEmployeeDocument(
       documentOwnerType: "APPLICANT",
     });
     const records = await readApplicantDocumentData();
+    const existing = records.find(
+      (item) =>
+        item.applicantId === record.applicantId?.trim() ||
+        item.sourceInterviewApplicantId === record.sourceInterviewApplicantId,
+    );
+
+    if (existing) {
+      return {
+        success: false,
+        message: "Applicant document already exists.",
+      };
+    }
 
     records.push(normalizeApplicantDocument(record));
     await writeApplicantDocumentData(records);
@@ -605,13 +784,12 @@ export async function updateEmployeeDocument(
         ...data,
         documentOwnerType: "APPLICANT",
         applicantId: context.currentApplicant.id,
-        applicantCode: context.currentApplicant.applicantCode,
         candidateName: context.currentApplicant.candidateName,
+        applicantCode: context.currentApplicant.applicantCode,
       });
       const records = await readApplicantDocumentData();
       const index = records.findIndex(
-        (item) =>
-          item.id === id && item.applicantId === context.currentApplicant.id,
+        (item) => item.id === id && item.applicantId === context.currentApplicant.id,
       );
 
       if (index === -1) {
@@ -633,11 +811,13 @@ export async function updateEmployeeDocument(
         linkedEmployeeCode: records[index].linkedEmployeeCode,
         linkedEmployeeName: records[index].linkedEmployeeName,
       });
-
       await writeApplicantDocumentData(records);
       await markApplicantDocumentsSubmitted(context.currentApplicant.id);
 
       revalidatePath("/applicant-dashboard");
+      revalidatePath("/applicant-dashboard/documents");
+      revalidatePath("/employee-documents");
+      revalidatePath("/recruitment");
 
       return {
         success: true,
@@ -710,7 +890,6 @@ export async function updateEmployeeDocument(
       linkedEmployeeCode: records[index].linkedEmployeeCode,
       linkedEmployeeName: records[index].linkedEmployeeName,
     });
-
     await writeApplicantDocumentData(records);
 
     revalidatePath("/employee-documents");
@@ -731,7 +910,10 @@ export async function updateEmployeeDocument(
 
 export async function reviewEmployeeDocument(
   id: string,
-  input: { reviewStatus?: "APPROVED" | "REJECTED"; reviewRemark?: string },
+  input: {
+    reviewRemark?: string;
+    statusUpdates?: Partial<Record<string, DocumentVerificationStatus>>;
+  },
 ): Promise<ActionResponse> {
   try {
     const context = await getCurrentDocumentContext();
@@ -743,16 +925,6 @@ export async function reviewEmployeeDocument(
       };
     }
 
-    if (
-      input.reviewStatus !== "APPROVED" &&
-      input.reviewStatus !== "REJECTED"
-    ) {
-      return {
-        success: false,
-        message: "Review status must be approved or rejected",
-      };
-    }
-
     const session = await auth();
     const reviewerName =
       session?.user?.name ||
@@ -761,34 +933,116 @@ export async function reviewEmployeeDocument(
       "HR Reviewer";
 
     const records = await readApplicantDocumentData();
-    const index = records.findIndex((item) => item.id === id);
+    const record = records
+      .map(mapApplicantDocument)
+      .find((item) => item.id === id);
 
-    if (index === -1) {
+    if (!record) {
       return {
         success: false,
         message: "Applicant document not found",
       };
     }
 
-    records[index] = normalizeApplicantDocument({
-      ...records[index],
-      reviewStatus: input.reviewStatus,
-      reviewRemark: input.reviewRemark?.trim() || "",
-      reviewedByName: reviewerName,
-      reviewedAt: new Date().toISOString(),
-    });
+    const index = records.findIndex((item) => item.id === id);
+    const statusByKey = new Map(
+      REVIEWABLE_DOCUMENT_FIELDS.map((field) => [field.statusKey, field]),
+    );
+    const updatedRecord: EmployeeDocument = {
+      ...record,
+    };
 
+    for (const [statusKey, rawStatus] of Object.entries(
+      input.statusUpdates ?? {},
+    )) {
+      if (!statusByKey.has(statusKey)) {
+        continue;
+      }
+
+      if (
+        !rawStatus ||
+        !DOCUMENT_VERIFICATION_STATUSES.includes(
+          rawStatus as DocumentVerificationStatus,
+        )
+      ) {
+        return {
+          success: false,
+          message: `Invalid status for ${statusKey}`,
+        };
+      }
+
+      (updatedRecord as Record<string, unknown>)[statusKey] =
+        rawStatus as DocumentVerificationStatus;
+    }
+
+    const reviewedFields = getUploadedReviewableDocumentFields(updatedRecord).filter(
+      (field) => field.uploaded || field.status !== "PENDING_REVIEW",
+    );
+
+    if (!reviewedFields.length) {
+      return {
+        success: false,
+        message: "Please review at least one uploaded document",
+      };
+    }
+
+    const pendingFields = reviewedFields.filter(
+      (field) => field.status === "PENDING_REVIEW",
+    );
+
+    if (pendingFields.length) {
+      return {
+        success: false,
+        message:
+          "Please set a final status for every uploaded document before submitting the review",
+      };
+    }
+
+    const overallStatus = getNextDocumentOverallStatus(
+      reviewedFields.map((field) => field.status),
+    );
+    const reviewRemark = input.reviewRemark?.trim() || "";
+    const reviewedAt = new Date().toISOString();
+
+    records[index] = normalizeApplicantDocument({
+      ...updatedRecord,
+      reviewStatus: overallStatus,
+      reviewRemark,
+      reviewedByName: reviewerName,
+      reviewedAt,
+    });
     await writeApplicantDocumentData(records);
 
+    let emailSent = true;
+    try {
+      await notifyApplicantDocumentReview(
+        records[index],
+        reviewerName,
+        overallStatus,
+      );
+    } catch {
+      emailSent = false;
+      // Keep the review saved even if notification delivery fails.
+    }
+
     revalidatePath("/employee-documents");
+    revalidatePath("/applicant-dashboard/documents");
     revalidatePath("/recruitment");
 
     return {
       success: true,
       message:
-        input.reviewStatus === "APPROVED"
-          ? "Document approved"
-          : "Document rejected",
+        overallStatus === "APPROVED"
+          ? emailSent
+            ? "Document approved and applicant notified"
+            : "Document approved, but the applicant email could not be sent"
+          : overallStatus === "REUPLOAD_REQUESTED"
+            ? emailSent
+              ? "Reupload requested and applicant notified"
+              : "Reupload requested, but the applicant email could not be sent"
+            : emailSent
+              ? "Document rejected and applicant notified"
+              : "Document rejected, but the applicant email could not be sent",
     };
   } catch (error) {
     return {
@@ -824,8 +1078,11 @@ export async function deleteEmployeeDocument(
     const records = await readApplicantDocumentData();
     const nextRecords = records.filter((item) => item.id !== id);
 
-    await writeApplicantDocumentData(nextRecords);
+    if (nextRecords.length !== records.length) {
+      await writeApplicantDocumentData(nextRecords);
+    }
     revalidatePath("/employee-documents");
+    revalidatePath("/applicant-dashboard/documents");
     revalidatePath("/recruitment");
 
     return {

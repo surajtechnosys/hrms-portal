@@ -18,6 +18,7 @@ import {
   monthlyEodReviewSchema,
   recruitmentSchema,
   recruitmentIntakeSchema,
+  interviewSchema,
   userSchema,
   workLocationSchema,
   attendanceSchema,
@@ -43,6 +44,7 @@ export type Employer = z.infer<typeof employerSchema> & {
 
 export type RecruitmentApplication = z.infer<typeof recruitmentSchema>;
 export type RecruitmentIntake = z.infer<typeof recruitmentIntakeSchema>;
+export type InterviewRecord = z.infer<typeof interviewSchema>;
 
 export type WorkLocation = z.infer<typeof workLocationSchema>;
 

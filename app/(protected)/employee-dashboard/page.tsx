@@ -3,7 +3,9 @@ import { getAttendanceDashboard } from "@/lib/actions/attendance";
 import { getLeaveDashboard } from "@/lib/actions/leave-requests";
 import { getEmployeeProfiles } from "@/lib/actions/employee-profiles";
 import { getEmployeeDocuments } from "@/lib/actions/employee-documents";
+import { getInterviewWorkspace } from "@/lib/actions/interviews";
 import { getLeaveRequests } from "@/lib/actions/leave-requests";
+import InterviewDataTable from "@/components/interviews/interview-data-table";
 import { LeaveRequestReviewTable } from "@/components/leave-requests/leave-request-review-table";
 import {
   isCurrentEmployeeHr,
@@ -15,12 +17,9 @@ import {
   BadgeCheck,
   BriefcaseBusiness,
   CalendarDays,
-  CalendarCheck,
-  ChevronRight,
   ClipboardList,
   FileText,
   HeartHandshake,
-  Mail,
   Plus,
   MapPin,
   Phone,
@@ -32,9 +31,6 @@ import { redirect } from "next/navigation";
 
 const formatDate = (value?: Date | null) =>
   value ? new Date(value).toLocaleDateString("en-GB") : "-";
-
-const toDateOnly = (value = new Date()) =>
-  new Date(Date.UTC(value.getFullYear(), value.getMonth(), value.getDate()));
 
 export default async function EmployeeDashboardPage({
   searchParams,
@@ -829,100 +825,37 @@ export default async function EmployeeDashboardPage({
   }
 
   if (isEmployee && isManagerEmployee) {
-    const today = toDateOnly();
-    const employeeProfile = await prisma.employeeProfile.findFirst({
-      where: {
-        email: session.user.email,
-        status: "ACTIVE",
-      },
-      include: {
-        department: {
-          select: {
-            name: true,
-          },
+    const [employeeProfile, interviewWorkspace] = await Promise.all([
+      prisma.employeeProfile.findFirst({
+        where: {
+          email: session.user.email,
+          status: "ACTIVE",
         },
-        jobRole: {
-          select: {
-            name: true,
+        include: {
+          department: {
+            select: {
+              name: true,
+            },
           },
-        },
-        manager: {
-          select: {
-            employeeName: true,
+          jobRole: {
+            select: {
+              name: true,
+            },
           },
-        },
-        workLocation: {
-          select: {
-            name: true,
+          manager: {
+            select: {
+              employeeName: true,
+            },
           },
-        },
-        directReports: {
-          orderBy: [{ employeeName: "asc" }, { employeeCode: "asc" }],
-          include: {
-            department: {
-              select: {
-                name: true,
-              },
-            },
-            jobRole: {
-              select: {
-                name: true,
-              },
-            },
-            workLocation: {
-              select: {
-                name: true,
-              },
-            },
-            employeeDocuments: {
-              select: {
-                id: true,
-                reviewStatus: true,
-              },
-            },
-            leaveRequests: {
-              orderBy: {
-                createdAt: "desc",
-              },
-              take: 3,
-              select: {
-                id: true,
-                leaveType: true,
-                startDate: true,
-                endDate: true,
-                totalDays: true,
-                reason: true,
-                status: true,
-              },
-            },
-            attendances: {
-              where: {
-                date: today,
-              },
-              select: {
-                id: true,
-                status: true,
-                checkIn: true,
-                checkOut: true,
-              },
-            },
-            projectMembers: {
-              include: {
-                project: {
-                  select: {
-                    id: true,
-                    name: true,
-                    status: true,
-                    startDate: true,
-                    endDate: true,
-                  },
-                },
-              },
+          workLocation: {
+            select: {
+              name: true,
             },
           },
         },
-      },
-    });
+      }),
+      getInterviewWorkspace(),
+    ]);
 
     if (!employeeProfile) {
       return (
@@ -940,119 +873,6 @@ export default async function EmployeeDashboardPage({
       );
     }
 
-    const directReports = employeeProfile.directReports;
-    const teamIds = directReports.map((report) => report.id);
-    const pendingLeaveRequests = directReports.flatMap((report) =>
-      report.leaveRequests
-        .filter((request) => request.status === "PENDING")
-        .map((request) => ({
-          ...request,
-          employeeName: report.employeeName,
-          employeeCode: report.employeeCode,
-        })),
-    );
-    const pendingDocumentReviews = directReports.reduce(
-      (total, report) =>
-        total +
-        report.employeeDocuments.filter(
-          (document) => document.reviewStatus === "PENDING",
-        ).length,
-      0,
-    );
-    const todayAttendance = directReports.flatMap((report) =>
-      report.attendances.map((attendance) => ({
-        ...attendance,
-        employeeName: report.employeeName,
-        employeeCode: report.employeeCode,
-      })),
-    );
-    const activeProjects = new Set(
-      directReports.flatMap((report) =>
-        report.projectMembers
-          .filter((member) => member.project.status === "ACTIVE")
-          .map((member) => member.project.name),
-      ),
-    );
-    const teamProjectSummaries = Array.from(
-      directReports
-        .flatMap((report) =>
-          report.projectMembers.map((member) => ({
-            project: member.project,
-            employeeName: report.employeeName,
-          })),
-        )
-        .reduce((projects, assignment) => {
-          const existing = projects.get(assignment.project.id);
-
-          if (existing) {
-            existing.memberNames.push(assignment.employeeName);
-            return projects;
-          }
-
-          projects.set(assignment.project.id, {
-            ...assignment.project,
-            memberNames: [assignment.employeeName],
-          });
-
-          return projects;
-        }, new Map<string, { id: string; name: string; status: string; startDate: Date; endDate: Date | null; memberNames: string[] }>())
-        .values(),
-    );
-    const projectAssignments = directReports.reduce(
-      (total, report) => total + report.projectMembers.length,
-      0,
-    );
-
-    const managerStats = [
-      {
-        title: "Direct Reports",
-        value: directReports.length,
-        icon: Users,
-        tone: "bg-sky-50 text-sky-700",
-      },
-      {
-        title: "Active Team",
-        value: directReports.filter((report) => report.status === "ACTIVE").length,
-        icon: BadgeCheck,
-        tone: "bg-emerald-50 text-emerald-700",
-      },
-      {
-        title: "Pending Leaves",
-        value: pendingLeaveRequests.length,
-        icon: CalendarDays,
-        tone: "bg-amber-50 text-amber-700",
-      },
-      {
-        title: "Pending Docs",
-        value: pendingDocumentReviews,
-        icon: FileText,
-        tone: "bg-indigo-50 text-indigo-700",
-      },
-      {
-        title: "Project Assignments",
-        value: projectAssignments,
-        icon: BriefcaseBusiness,
-        tone: "bg-cyan-50 text-cyan-700",
-      },
-    ];
-
-    const projectModuleCards = [
-      {
-        title: "Project Creation",
-        href: "/projects",
-        description: "Create projects, update timelines, and track project status.",
-        meta: `${teamProjectSummaries.length} team project(s)`,
-        icon: BriefcaseBusiness,
-      },
-      {
-        title: "Project Members",
-        href: "/project-members",
-        description: "Assign team members to projects and maintain ownership.",
-        meta: `${projectAssignments} assignment(s)`,
-        icon: Users,
-      },
-    ];
-
     return (
       <div className="min-h-screen bg-slate-50 p-3 md:p-5">
         <div className="w-full space-y-6">
@@ -1060,38 +880,29 @@ export default async function EmployeeDashboardPage({
             <div className="grid gap-6 p-6 lg:grid-cols-[1.1fr_0.9fr] lg:p-8">
               <div>
                 <p className="text-sm uppercase text-cyan-700">
-                  Manager Dashboard
+                  Manager Interview Workspace
                 </p>
                 <h1 className="mt-3 text-3xl font-semibold text-slate-900">
                   {employeeProfile.employeeName}
                 </h1>
                 <p className="mt-3 max-w-xl text-sm text-slate-600">
-                  Your manager view is built from employees assigned to you in
-                  the employee profile form. HR access is controlled by job
-                  role; manager access is controlled by reporting relation.
+                  This employee dashboard is focused only on interview assignments. HR schedules interviews, and managers or interviewers respond from their assigned queue.
                 </p>
 
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link
-                    href="/attendance/my"
+                    href="/interviews"
                     className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-medium text-cyan-800 shadow-sm"
                   >
-                    <CalendarCheck className="h-4 w-4" />
-                    My Attendance
-                  </Link>
-                  <Link
-                    href="/leave-requests/my"
-                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Apply Leave
+                    <ClipboardList className="h-4 w-4" />
+                    Open Interview Queue
                   </Link>
                 </div>
               </div>
 
               <div className="rounded-lg border border-slate-200 bg-white p-5">
                 <p className="text-sm font-medium text-slate-700">
-                  Login Relation
+                  Interview Access
                 </p>
                 <div className="mt-4 space-y-4 text-sm text-slate-700">
                   <div className="flex items-center justify-between gap-4">
@@ -1103,324 +914,24 @@ export default async function EmployeeDashboardPage({
                     <strong className="text-slate-900">{employeeProfile.jobRole?.name || "Not assigned"}</strong>
                   </div>
                   <div className="flex items-center justify-between gap-4">
-                    <span>Manager field</span>
-                    <strong className="text-slate-900">{employeeProfile.manager?.employeeName || "Top level"}</strong>
+                    <span>Assigned interviews</span>
+                    <strong className="text-slate-900">{interviewWorkspace.records.length}</strong>
                   </div>
                   <div className="flex items-center justify-between gap-4">
-                    <span>Direct reports</span>
-                    <strong className="text-slate-900">{teamIds.length}</strong>
+                    <span>Pending feedback</span>
+                    <strong className="text-slate-900">{interviewWorkspace.stats.pendingFeedback}</strong>
                   </div>
                 </div>
               </div>
             </div>
           </section>
 
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            {managerStats.map((item) => (
-              <div key={item.title} className="rounded-lg border bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-sm text-slate-500">{item.title}</p>
-                    <p className="mt-2 text-2xl font-semibold text-slate-900">
-                      {item.value}
-                    </p>
-                  </div>
-                  <div className={`rounded-lg p-3 ${item.tone}`}>
-                    <item.icon className="h-5 w-5" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </section>
-
-          <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-            <div className="rounded-lg border bg-white p-6 shadow-sm">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    Direct Reports
-                  </h2>
-                  <p className="text-sm text-slate-500">
-                    Employees with their Manager field set to your profile.
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-5 grid gap-4 md:grid-cols-2">
-                {directReports.map((report) => (
-                  <div
-                    key={report.id}
-                    className="rounded-lg border border-slate-200 bg-slate-50 p-4"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="font-semibold text-slate-900">
-                          {report.employeeName}
-                        </h3>
-                        <p className="text-sm text-slate-500">
-                          {report.employeeCode}
-                        </p>
-                      </div>
-                      <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-700">
-                        {report.status}
-                      </span>
-                    </div>
-                    <div className="mt-4 space-y-2 text-sm text-slate-600">
-                      <p>{report.jobRole?.name || "Role not assigned"}</p>
-                      <p>{report.department?.name || "Department not assigned"}</p>
-                      <p>{report.workLocation?.name || "Location not assigned"}</p>
-                      <p>{report.projectMembers.length} project assignment(s)</p>
-                    </div>
-                  </div>
-                ))}
-
-                {!directReports.length && (
-                  <div className="rounded-lg border border-dashed border-slate-300 p-5 text-sm text-slate-500 md:col-span-2">
-                    No direct reports are assigned yet. In the employee creation
-                    form, choose this employee in the Manager dropdown for each
-                    team member.
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="rounded-lg border bg-white p-6 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-cyan-50 p-3 text-cyan-700">
-                    <ClipboardList className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-semibold text-slate-900">
-                      Team Signals
-                    </h2>
-                    <p className="text-sm text-slate-500">
-                      Today and this month at a glance.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-5 space-y-3 text-sm">
-                  <div className="flex justify-between rounded-lg bg-slate-50 px-4 py-3">
-                    <span>Attendance marked today</span>
-                    <strong className="text-slate-900">
-                      {todayAttendance.length}
-                    </strong>
-                  </div>
-                  <div className="flex justify-between rounded-lg bg-slate-50 px-4 py-3">
-                    <span>Active projects</span>
-                    <strong className="text-slate-900">
-                      {activeProjects.size}
-                    </strong>
-                  </div>
-                  <div className="flex justify-between rounded-lg bg-slate-50 px-4 py-3">
-                    <span>Pending leaves</span>
-                    <strong className="text-slate-900">
-                      {pendingLeaveRequests.length}
-                    </strong>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-lg border bg-white p-6 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-emerald-50 p-3 text-emerald-700">
-                    <Mail className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-semibold text-slate-900">
-                      My Profile
-                    </h2>
-                    <p className="text-sm text-slate-500">
-                      Your own employee login remains self-service.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-5 space-y-3 text-sm text-slate-600">
-                  <p>Email: {session.user.email || "-"}</p>
-                  <p>Department: {employeeProfile.department?.name || "-"}</p>
-                  <p>Location: {employeeProfile.workLocation?.name || "-"}</p>
-                  <p>Joined: {formatDate(employeeProfile.joiningDate)}</p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="rounded-lg border bg-white p-6 shadow-sm">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  Project Management Modules
-                </h2>
-                <p className="text-sm text-slate-500">
-                  Manager tools for creating projects and assigning direct
-                  reports to project teams.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-5 grid gap-4 lg:grid-cols-2">
-              {projectModuleCards.map((module) => (
-                <Link
-                  key={module.title}
-                  href={module.href}
-                  className="group rounded-lg border border-slate-200 bg-slate-50 p-5 transition hover:border-cyan-300 hover:bg-cyan-50"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3">
-                      <div className="rounded-lg bg-white p-3 text-cyan-700 shadow-sm">
-                        <module.icon className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-slate-900">
-                          {module.title}
-                        </h3>
-                        <p className="mt-1 text-sm text-slate-600">
-                          {module.description}
-                        </p>
-                      </div>
-                    </div>
-                    <ChevronRight className="mt-1 h-5 w-5 text-slate-400 transition group-hover:translate-x-1 group-hover:text-cyan-700" />
-                  </div>
-                  <p className="mt-4 text-sm font-medium text-cyan-700">
-                    {module.meta}
-                  </p>
-                </Link>
-              ))}
-            </div>
-
-            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {teamProjectSummaries.slice(0, 6).map((project) => (
-                <div
-                  key={project.id}
-                  className="rounded-lg border border-slate-200 p-4"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-medium text-slate-900">
-                        {project.name}
-                      </p>
-                      <p className="mt-1 text-sm text-slate-500">
-                        {formatDate(project.startDate)} - {formatDate(project.endDate)}
-                      </p>
-                    </div>
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                      {project.status.replaceAll("_", " ")}
-                    </span>
-                  </div>
-                  <p className="mt-3 text-sm text-slate-600">
-                    {project.memberNames.slice(0, 3).join(", ")}
-                    {project.memberNames.length > 3
-                      ? ` +${project.memberNames.length - 3} more`
-                      : ""}
-                  </p>
-                </div>
-              ))}
-
-              {!teamProjectSummaries.length && (
-                <div className="rounded-lg border border-dashed border-slate-300 p-5 text-sm text-slate-500 md:col-span-2 xl:col-span-3">
-                  No team project assignments yet. Use Project Members after
-                  creating a project to connect your direct reports.
-                </div>
-              )}
-            </div>
-          </section>
-
-          <section className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-lg border bg-white p-6 shadow-sm">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    Team Leave Requests
-                  </h2>
-                  <p className="text-sm text-slate-500">
-                    Pending requests from your direct reports.
-                  </p>
-                </div>
-                <Link
-                  href="/leave-requests/my"
-                  className="text-sm font-medium text-cyan-700"
-                >
-                  My requests
-                </Link>
-              </div>
-
-              <div className="mt-5 space-y-3">
-                {pendingLeaveRequests.slice(0, 5).map((request) => (
-                  <div
-                    key={request.id}
-                    className="rounded-lg border border-slate-200 bg-slate-50 p-4"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="font-medium text-slate-900">
-                          {request.employeeName}
-                        </p>
-                        <p className="text-sm text-slate-500">
-                          {request.leaveType.replace("_", " ")} - {request.totalDays} days
-                        </p>
-                      </div>
-                      <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">
-                        {request.status}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-sm text-slate-600">
-                      {request.reason}
-                    </p>
-                  </div>
-                ))}
-                {!pendingLeaveRequests.length && (
-                  <div className="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500">
-                    No pending leave requests from direct reports right now.
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="rounded-lg border bg-white p-6 shadow-sm">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    Today Attendance
-                  </h2>
-                  <p className="text-sm text-slate-500">
-                    Attendance already recorded by your direct reports today.
-                  </p>
-                </div>
-                <Link
-                  href="/attendance/my"
-                  className="text-sm font-medium text-cyan-700"
-                >
-                  My attendance
-                </Link>
-              </div>
-
-              <div className="mt-5 space-y-3">
-                {todayAttendance.slice(0, 5).map((attendance) => (
-                  <div
-                    key={attendance.id}
-                    className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm"
-                  >
-                    <div>
-                      <p className="font-medium text-slate-900">
-                        {attendance.employeeName}
-                      </p>
-                      <p className="text-slate-500">{attendance.employeeCode}</p>
-                    </div>
-                    <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-700">
-                      {attendance.status}
-                    </span>
-                  </div>
-                ))}
-                {!todayAttendance.length && (
-                  <div className="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500">
-                    No direct-report attendance has been marked today.
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
+          <InterviewDataTable
+            data={interviewWorkspace.records}
+            stats={interviewWorkspace.stats}
+            canManageAll={false}
+            showStats={false}
+          />
         </div>
       </div>
     );
@@ -1698,73 +1209,6 @@ export default async function EmployeeDashboardPage({
           </div>
         </section>
 
-        <section className="rounded-lg border bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-cyan-50 p-3 text-cyan-700">
-                <FileText className="h-5 w-5" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  My Documents
-                </h2>
-                <p className="text-sm text-slate-500">
-                  Upload and track the documents linked to your employee profile.
-                </p>
-              </div>
-              <Link
-                href="/employee-documents/create?from=employee-dashboard"
-                className="inline-flex items-center gap-2 rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-cyan-700"
-              >
-                <Plus className="h-4 w-4" />
-                Upload document
-              </Link>
-            </div>
-          </div>
-
-          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {employeeProfile.employeeDocuments.length ? (
-              employeeProfile.employeeDocuments.map((document) => (
-                <div
-                  key={document.id}
-                  className="rounded-lg border border-slate-200 bg-slate-50 p-4"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-medium text-slate-900">
-                        {document.experienceType.replaceAll("_", " ")}
-                      </p>
-                      <p className="mt-1 text-sm text-slate-500">
-                        Updated {formatDate(document.updatedAt)}
-                      </p>
-                    </div>
-                    <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-700">
-                      {document.reviewStatus}
-                    </span>
-                  </div>
-
-                  <div className="mt-4 space-y-1 text-sm text-slate-600">
-                    <p>Aadhaar: {document.aadhaarNumber || "-"}</p>
-                    <p>PAN: {document.panNumber || "-"}</p>
-                    <p>Status: {document.status}</p>
-                    <p>Remark: {document.reviewRemark || "-"}</p>
-                  </div>
-
-                  <Link
-                    href={`/employee-documents/edit/${document.id}`}
-                    className="mt-4 inline-flex text-sm font-medium text-cyan-700 hover:text-cyan-800"
-                  >
-                    Open document
-                  </Link>
-                </div>
-              ))
-            ) : (
-              <div className="rounded-lg border border-dashed border-slate-300 p-5 text-sm text-slate-500 md:col-span-2 xl:col-span-3">
-                No documents uploaded yet. Use the upload button to add your identity, education, and experience records.
-              </div>
-            )}
-          </div>
-        </section>
       </div>
     </div>
   );

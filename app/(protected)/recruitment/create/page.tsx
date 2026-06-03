@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getRecruitmentApplications } from "@/lib/actions/recruitment";
+import { getSelectedInterviewCandidates } from "@/lib/actions/interviews";
 import { canAccess } from "@/lib/rbac";
 
 function getNextSerialNumber(records: Awaited<ReturnType<typeof getRecruitmentApplications>>) {
@@ -30,7 +31,10 @@ const RecruitmentCreatePage = async () => {
     redirect("/404");
   }
 
-  const records = await getRecruitmentApplications();
+  const [records, selectedCandidates] = await Promise.all([
+    getRecruitmentApplications(),
+    getSelectedInterviewCandidates(),
+  ]);
   const nextSerialNumber = getNextSerialNumber(records);
 
   return (
@@ -65,7 +69,11 @@ const RecruitmentCreatePage = async () => {
       </CardHeader>
 
       <CardContent className="pt-6">
-        <RecruitmentForm update={false} nextSerialNumber={nextSerialNumber} />
+        <RecruitmentForm
+          update={false}
+          nextSerialNumber={nextSerialNumber}
+          selectedCandidates={selectedCandidates}
+        />
       </CardContent>
     </Card>
   );
