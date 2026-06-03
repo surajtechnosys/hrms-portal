@@ -210,7 +210,7 @@ export async function getRecruitmentIntakeInterviewApplicants(): Promise<
 
 export async function updateRecruitmentIntakePipelineStatus(
   applicantId: string,
-  pipelineStatus: string,
+  pipelineStatus: RecruitmentIntake["pipelineStatus"],
 ) {
   const records = await readRecruitmentIntakeData();
   const index = records.findIndex((item) => item.id === applicantId);

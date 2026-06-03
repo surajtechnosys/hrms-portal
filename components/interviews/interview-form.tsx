@@ -77,7 +77,11 @@ export default function InterviewForm({
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = React.useTransition();
-  const form = useForm<z.infer<typeof interviewSchema>>({
+  const form = useForm<
+    z.input<typeof interviewSchema>,
+    undefined,
+    z.output<typeof interviewSchema>
+  >({
     resolver: zodResolver(interviewSchema),
     defaultValues: data || interviewDefaultValues,
   });
@@ -129,12 +133,21 @@ export default function InterviewForm({
     form.setValue("applicantName", applicant.candidateName);
     form.setValue("appliedPosition", applicant.profilePost);
 
-    if (!update && applicant.suggestedRound) {
-      form.setValue("interviewRound", applicant.suggestedRound);
+    if (
+      !update &&
+      applicant.suggestedRound &&
+      roundOptions.includes(
+        applicant.suggestedRound as (typeof roundOptions)[number],
+      )
+    ) {
+      form.setValue(
+        "interviewRound",
+        applicant.suggestedRound as (typeof roundOptions)[number],
+      );
     }
   }, [applicantId, applicants, canManageAll, form, update]);
 
-  const submit = (values: z.infer<typeof interviewSchema>) => {
+  const submit = (values: z.output<typeof interviewSchema>) => {
     startTransition(async () => {
       const response = canManageAll
         ? update && data?.id
@@ -213,7 +226,7 @@ export default function InterviewForm({
   };
 
   const renderInput = (
-    name: keyof z.infer<typeof interviewSchema>,
+    name: keyof z.input<typeof interviewSchema>,
     label: string,
     placeholder: string,
     type = "text",
@@ -244,7 +257,7 @@ export default function InterviewForm({
   );
 
   const renderTextArea = (
-    name: keyof z.infer<typeof interviewSchema>,
+    name: keyof z.input<typeof interviewSchema>,
     label: string,
     placeholder: string,
     disabled = false,
@@ -851,7 +864,10 @@ export default function InterviewForm({
                               max="10"
                               step="1"
                               className={fieldClass}
-                              value={field.value ?? ""}
+                              value={
+                                (field.value as number | string | null | undefined) ??
+                                ""
+                              }
                               onChange={(event) =>
                                 field.onChange(
                                   event.target.value === ""

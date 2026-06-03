@@ -344,7 +344,7 @@ export async function getInterviewEligibleApplicants(): Promise<
 
 export async function updateRecruitmentPipelineStatus(
   applicantId: string,
-  pipelineStatus: string,
+  pipelineStatus: RecruitmentApplication["pipelineStatus"],
 ) {
   const records = await readRecruitmentData();
   const index = records.findIndex((item) => item.id === applicantId);

@@ -12,7 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { sendSystemEmail } from "@/lib/email";
 import { formatError } from "@/lib/utils";
 import { interviewSchema } from "@/lib/validators";
-import type { InterviewRecord } from "@/types";
+import type { InterviewRecord, RecruitmentIntake } from "@/types";
 import {
   getRecruitmentIntakeById,
   getRecruitmentIntakeInterviewApplicants,
@@ -37,6 +37,8 @@ type InterviewDashboardStats = {
   rejectedCandidates: number;
   upcoming: number;
 };
+
+type RecruitmentPipelineStatus = NonNullable<RecruitmentIntake["pipelineStatus"]>;
 
 type InterviewWorkspace = {
   records: InterviewRecord[];
@@ -403,7 +405,7 @@ function getDashboardStats(records: InterviewRecord[]): InterviewDashboardStats 
 }
 
 async function syncApplicantPipelineFromInterview(record: InterviewRecord) {
-  const statusMap: Record<string, string> = {
+  const statusMap: Record<string, RecruitmentPipelineStatus> = {
     SCHEDULED: "INTERVIEW_SCHEDULED",
     RESCHEDULED: "INTERVIEW_SCHEDULED",
     IN_PROGRESS: "INTERVIEW_IN_PROGRESS",
@@ -412,7 +414,8 @@ async function syncApplicantPipelineFromInterview(record: InterviewRecord) {
     NO_SHOW: "INTERVIEW_COMPLETED",
   };
 
-  let pipelineStatus = statusMap[record.status] || "SHORTLISTED";
+  let pipelineStatus: RecruitmentPipelineStatus =
+    statusMap[record.status] || "SHORTLISTED";
 
   if (record.recommendation === "SELECTED") {
     pipelineStatus = "SELECTED";

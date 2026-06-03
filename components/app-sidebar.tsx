@@ -372,7 +372,6 @@ function getMenuByRole(
         url: "/employee-dashboard",
         icon: <Gauge size={18} />,
       },
-      onboardingMenuGroup,
       {
         name: "My Attendance",
         url: "/attendance/my",
