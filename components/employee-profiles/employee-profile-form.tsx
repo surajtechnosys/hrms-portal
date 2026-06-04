@@ -69,6 +69,11 @@ type ApplicantDocumentOption = {
   candidateName: string;
   mobileNumber: string;
   email: string;
+  gender: string;
+  dateOfBirth: string;
+  address: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
   reviewStatus: string;
   linkedEmployeeId: string;
 };
@@ -119,6 +124,27 @@ const EmployeeProfileForm = ({
         (item) => item.id === selectedApplicantDocumentId,
       ) ?? null,
     [applicantDocuments, selectedApplicantDocumentId],
+  );
+
+  const applyApplicantDocumentValues = React.useCallback(
+    (document: ApplicantDocumentOption) => {
+      form.setValue("sourceApplicantDocumentId", document.id);
+      form.setValue("employeeName", document.candidateName || "");
+      form.setValue("email", document.email || "");
+      form.setValue("phone", document.mobileNumber || "");
+      form.setValue("gender", document.gender || "");
+      form.setValue("dateOfBirth", document.dateOfBirth || "");
+      form.setValue("address", document.address || "");
+      form.setValue(
+        "emergencyContactName",
+        document.emergencyContactName || "",
+      );
+      form.setValue(
+        "emergencyContactPhone",
+        document.emergencyContactPhone || "",
+      );
+    },
+    [form],
   );
 
   useEffect(() => {
@@ -173,17 +199,11 @@ const EmployeeProfileForm = ({
         : null;
 
     if (linkedApplicantDocument) {
-      form.setValue("sourceApplicantDocumentId", linkedApplicantDocument.id);
-      form.setValue("employeeName", linkedApplicantDocument.candidateName || "");
-      if (linkedApplicantDocument.email) {
-        form.setValue("email", linkedApplicantDocument.email);
-      }
-      if (linkedApplicantDocument.mobileNumber) {
-        form.setValue("phone", linkedApplicantDocument.mobileNumber);
-      }
+      applyApplicantDocumentValues(linkedApplicantDocument);
     }
   }, [
     applicantDocuments,
+    applyApplicantDocumentValues,
     form,
     initialApplicantDocumentId,
     initialRecruitmentId,
@@ -260,25 +280,19 @@ const EmployeeProfileForm = ({
 
                     <Select
                       value={field.value || NONE_VALUE}
-                      onValueChange={(value) => {
-                        const nextValue = value === NONE_VALUE ? "" : value;
-                        const selected = applicantDocuments.find(
-                          (item) => item.id === nextValue,
-                        );
+                        onValueChange={(value) => {
+                          const nextValue = value === NONE_VALUE ? "" : value;
+                          const selected = applicantDocuments.find(
+                            (item) => item.id === nextValue,
+                          );
 
-                        field.onChange(nextValue);
+                          field.onChange(nextValue);
 
-                        if (!selected) {
-                          return;
-                        }
-                        form.setValue("employeeName", selected.candidateName);
-                        if (selected.email) {
-                          form.setValue("email", selected.email);
-                        }
-                        if (selected.mobileNumber) {
-                          form.setValue("phone", selected.mobileNumber);
-                        }
-                      }}
+                          if (!selected) {
+                            return;
+                          }
+                          applyApplicantDocumentValues(selected);
+                        }}
                     >
                       <FormControl>
                         <SelectTrigger className={fieldClass}>

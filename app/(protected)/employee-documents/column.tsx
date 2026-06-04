@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { getDocumentReviewBadgeClass } from "@/lib/document-review";
 import { EmployeeDocument } from "@/types";
 import { ColumnDef } from "@tanstack/react-table";
-import { Eye, EditIcon, Trash, UserPlus } from "lucide-react";
+import { Eye, EditIcon, Trash } from "lucide-react";
 import Link from "next/link";
 
 export const getEmployeeDocumentColumns = ({
@@ -108,22 +108,6 @@ export const getEmployeeDocumentColumns = ({
             {canReview && row.original.reviewStatus === "PENDING" && (
               <Badge className="bg-amber-100 text-amber-700">Review open</Badge>
             )}
-
-            {canReview &&
-              row.original.reviewStatus === "APPROVED" &&
-              !row.original.linkedEmployeeId && (
-                <Button
-                  asChild
-                  className="bg-emerald-600 hover:bg-emerald-700"
-                >
-                  <Link
-                    href={`/employee-profiles/create?sourceApplicantDocumentId=${id}`}
-                  >
-                    <UserPlus size={16} />
-                    Create Employee
-                  </Link>
-                </Button>
-              )}
 
             {canEdit && (
               <Button

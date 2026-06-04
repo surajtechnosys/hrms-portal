@@ -561,6 +561,10 @@ export default async function EmployeeDashboardPage({
     const pendingDocs = documents.filter(
       (document) => document.reviewStatus === "PENDING",
     );
+    const approvedApplicantDocuments = documents.filter(
+      (document) =>
+        document.reviewStatus === "APPROVED" && !document.linkedEmployeeId,
+    );
     const pendingLeaveRequests = leaveRequests.filter(
       (request) => request.status === "PENDING",
     );
@@ -661,6 +665,68 @@ export default async function EmployeeDashboardPage({
                 </p>
               </div>
             ))}
+          </section>
+
+          <section className="rounded-lg border bg-white p-6 shadow-sm">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Approved Applicant Documents
+                </h2>
+                <p className="text-sm text-slate-500">
+                  Turn approved applicant documents into employee profiles from here.
+                </p>
+              </div>
+              <Link
+                href="/employee-documents"
+                className="text-sm font-medium text-cyan-700"
+              >
+                Open document module
+              </Link>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {approvedApplicantDocuments.slice(0, 6).map((document) => (
+                <div
+                  key={document.id}
+                  className="rounded-lg border border-slate-200 bg-slate-50 p-5"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-slate-900">
+                        {document.candidateName || "Applicant"}
+                      </p>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {document.employeeCode || document.applicantCode || document.applicantId || "-"}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700">
+                      APPROVED
+                    </span>
+                  </div>
+
+                  <div className="mt-4 space-y-1 text-sm text-slate-600">
+                    <p>Mobile: {document.mobileNumber || "-"}</p>
+                    <p>Aadhaar: {document.aadhaarNumber || "-"}</p>
+                    <p>PAN: {document.panNumber || "-"}</p>
+                  </div>
+
+                  <Link
+                    href={`/employee-profiles/create?sourceApplicantDocumentId=${document.id}`}
+                    className="mt-4 inline-flex h-10 items-center justify-center rounded-lg bg-cyan-600 px-4 text-sm font-medium text-white transition hover:bg-cyan-700"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Employee
+                  </Link>
+                </div>
+              ))}
+
+              {!approvedApplicantDocuments.length && (
+                <div className="rounded-lg border border-dashed border-slate-300 p-5 text-sm text-slate-500 md:col-span-2 xl:col-span-3">
+                  No approved applicant documents are ready for employee creation.
+                </div>
+              )}
+            </div>
           </section>
 
           <section className="grid gap-4 lg:grid-cols-2">

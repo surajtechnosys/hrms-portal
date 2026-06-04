@@ -52,6 +52,11 @@ type ApplicantDocumentOption = {
   candidateName: string;
   mobileNumber: string;
   email: string;
+  gender: string;
+  dateOfBirth: string;
+  address: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
   reviewStatus: string;
   linkedEmployeeId: string;
 };
@@ -547,6 +552,7 @@ async function getApplicantDocumentOptionsBase(): Promise<ApplicantDocumentOptio
 
   return documentRecords
     .map(mapApplicantDocument)
+    .filter((record) => record.reviewStatus === "APPROVED")
     .map((record) => {
       const recruitmentRecord = recruitmentById.get(record.applicantId ?? "");
 
@@ -561,6 +567,14 @@ async function getApplicantDocumentOptionsBase(): Promise<ApplicantDocumentOptio
         candidateName: record.candidateName ?? "",
         mobileNumber: recruitmentRecord?.mobileNumber ?? "",
         email: recruitmentRecord?.email ?? "",
+        gender: record.gender ?? "",
+        dateOfBirth: record.dateOfBirth ?? "",
+        address:
+          record.currentAddress ||
+          record.permanentAddress ||
+          "",
+        emergencyContactName: record.emergencyContactName ?? "",
+        emergencyContactPhone: record.emergencyContactNumber ?? "",
         reviewStatus: record.reviewStatus ?? "PENDING",
         linkedEmployeeId: record.linkedEmployeeId ?? "",
       };
@@ -584,14 +598,29 @@ export async function attachApplicantDocumentToEmployeeProfile(params: {
   employeeName: string;
   tx?: Prisma.TransactionClient;
 }) {
-  const records = await readApplicantDocumentData();
-  const index = records.findIndex((item) => item.id === params.applicantDocumentId);
+  const client = params.tx ?? prisma;
 
-  if (index === -1) {
+  const applicantRecord = await client.employeeDocument.findFirst({
+    where: {
+      id: params.applicantDocumentId,
+      documentOwnerType: "APPLICANT",
+    },
+    include: {
+      employee: {
+        select: {
+          id: true,
+          employeeCode: true,
+          employeeName: true,
+        },
+      },
+    },
+  });
+
+  if (!applicantRecord) {
     throw new Error("Applicant document not found");
   }
 
-  const applicantDocument = mapApplicantDocument(records[index]);
+  const applicantDocument = mapPrismaEmployeeDocument(applicantRecord);
 
   if (
     applicantDocument.linkedEmployeeId &&
@@ -599,8 +628,6 @@ export async function attachApplicantDocumentToEmployeeProfile(params: {
   ) {
     throw new Error("This applicant document is already connected to another employee");
   }
-
-  const client = params.tx ?? prisma;
 
   await client.employeeDocument.create({
     data: {
@@ -628,13 +655,19 @@ export async function attachApplicantDocumentToEmployeeProfile(params: {
     },
   });
 
-  records[index] = normalizeApplicantDocument({
-    ...applicantDocument,
-    linkedEmployeeId: params.employeeId,
-    linkedEmployeeCode: params.employeeCode,
-    linkedEmployeeName: params.employeeName,
+  await client.employeeDocument.update({
+    where: {
+      id: params.applicantDocumentId,
+    },
+    data: {
+      documentPayload: normalizeApplicantDocument({
+        ...applicantDocument,
+        linkedEmployeeId: params.employeeId,
+        linkedEmployeeCode: params.employeeCode,
+        linkedEmployeeName: params.employeeName,
+      }) as Prisma.InputJsonValue,
+    },
   });
-  await writeApplicantDocumentData(records);
 
   revalidatePath("/employee-documents");
   revalidatePath("/employee-profiles");
