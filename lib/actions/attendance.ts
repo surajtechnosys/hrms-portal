@@ -6,6 +6,12 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import {
+  getMonthRange,
+  resolveAttendanceStatus,
+  toDateInput,
+  toDateOnly,
+} from "@/lib/attendance-utils";
+import {
   canManageAllAttendance,
   getRoutePermissions,
 } from "@/lib/rbac";
@@ -13,9 +19,6 @@ import { isHrJobRoleName } from "@/lib/employee-job-role";
 import { formatError } from "@/lib/utils";
 
 const ATTENDANCE_ROUTE = "/attendance";
-const LATE_AFTER_HOUR = 9;
-const LATE_AFTER_MINUTE = 30;
-const HALF_DAY_HOURS = 4;
 
 type ActionResponse<T = undefined> = {
   success: boolean;
@@ -23,19 +26,34 @@ type ActionResponse<T = undefined> = {
   data?: T;
 };
 
-type AttendanceCalculation = {
-  status: AttendanceStatus;
-  workingHours: number | null;
-  isLate: boolean;
-  isHalfDay: boolean;
+type CurrentAttendanceUser = {
+  id: string;
+  email: string;
+  role?: {
+    name?: string | null;
+  } | null;
+  accountType?: string;
+  employeeProfile?: {
+    id: string;
+    employeeName?: string | null;
+    departmentId?: string | null;
+  } | null;
+  traineeProfile?: {
+    id: string;
+    fullName: string;
+    traineeCode: string;
+    departmentId?: string | null;
+  } | null;
 };
 
 export type AttendanceRecord = {
   id: string;
-  employeeId: string;
-  employeeName: string;
-  employeeCode: string;
+  participantId: string;
+  participantName: string;
+  participantCode: string;
   departmentName: string;
+  departmentId?: string;
+  type: "employee" | "trainee";
   date: string;
   checkIn: string;
   checkOut: string;
@@ -49,10 +67,11 @@ export type AttendanceRecord = {
 };
 
 export type AttendanceGridRow = {
-  employeeId: string;
-  employeeName: string;
-  employeeCode: string;
+  participantId: string;
+  participantName: string;
+  participantCode: string;
   departmentName: string;
+  type: "employee" | "trainee";
   days: Record<number, AttendanceStatus | "">;
   totals: {
     present: number;
@@ -73,12 +92,14 @@ export type AttendanceMonthSheet = {
 export type AttendanceFilters = {
   year?: number;
   month?: number;
-  employeeId?: string;
+  participantId?: string;
   departmentId?: string;
+  type?: "employees" | "trainees" | "all";
 };
 
 export type MarkAttendanceInput = {
-  employeeId?: string;
+  participantId?: string;
+  type?: "employee" | "trainee";
   date?: string;
   checkIn?: string;
   checkOut?: string;
@@ -86,84 +107,14 @@ export type MarkAttendanceInput = {
 };
 
 export type UpdateAttendanceInput = {
-  employeeId?: string;
+  participantId?: string;
+  type?: "employee" | "trainee";
   date?: string;
   checkIn?: string | null;
   checkOut?: string | null;
   status?: AttendanceStatus;
   remarks?: string | null;
 };
-
-function toDateOnly(value?: string | Date | null) {
-  const source = value ? new Date(value) : new Date();
-  return new Date(
-    Date.UTC(source.getFullYear(), source.getMonth(), source.getDate()),
-  );
-}
-
-function toDateInput(value: Date) {
-  return value.toISOString().slice(0, 10);
-}
-
-function getMonthRange(year: number, month: number) {
-  const start = new Date(Date.UTC(year, month - 1, 1));
-  const end = new Date(Date.UTC(year, month, 1));
-  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
-
-  return { start, end, daysInMonth };
-}
-
-function calculateWorkingHours(checkIn?: Date | null, checkOut?: Date | null) {
-  if (!checkIn || !checkOut || checkOut <= checkIn) return null;
-  return Number(((checkOut.getTime() - checkIn.getTime()) / 36e5).toFixed(2));
-}
-
-function isLateCheckIn(checkIn?: Date | null) {
-  if (!checkIn) return false;
-
-  const threshold = new Date(checkIn);
-  threshold.setHours(LATE_AFTER_HOUR, LATE_AFTER_MINUTE, 0, 0);
-
-  return checkIn > threshold;
-}
-
-function resolveStatus(
-  checkIn?: Date | null,
-  checkOut?: Date | null,
-  requestedStatus?: AttendanceStatus,
-): AttendanceCalculation {
-  const workingHours = calculateWorkingHours(checkIn, checkOut);
-
-  if (requestedStatus === AttendanceStatus.HALF_DAY) {
-    return {
-      status: AttendanceStatus.HALF_DAY,
-      workingHours,
-      isLate: isLateCheckIn(checkIn),
-      isHalfDay: true,
-    };
-  }
-
-  if (
-    requestedStatus &&
-    requestedStatus !== AttendanceStatus.PRESENT
-  ) {
-    return {
-      status: requestedStatus,
-      workingHours,
-      isLate: false,
-      isHalfDay: false,
-    };
-  }
-
-  const isHalfDay = workingHours !== null && workingHours < HALF_DAY_HOURS;
-
-  return {
-    status: isHalfDay ? AttendanceStatus.HALF_DAY : AttendanceStatus.PRESENT,
-    workingHours,
-    isLate: isLateCheckIn(checkIn),
-    isHalfDay,
-  };
-}
 
 function mapAttendance(record: Prisma.AttendanceGetPayload<{
   include: {
@@ -176,10 +127,12 @@ function mapAttendance(record: Prisma.AttendanceGetPayload<{
 }>): AttendanceRecord {
   return {
     id: record.id,
-    employeeId: record.employeeId,
-    employeeName: record.employee.employeeName,
-    employeeCode: record.employee.employeeCode,
+    participantId: record.employeeId,
+    participantName: record.employee.employeeName,
+    participantCode: record.employee.employeeCode,
     departmentName: record.employee.department?.name ?? "-",
+    departmentId: record.employee.department?.id,
+    type: "employee",
     date: toDateInput(record.date),
     checkIn: record.checkIn?.toISOString() ?? "",
     checkOut: record.checkOut?.toISOString() ?? "",
@@ -193,11 +146,79 @@ function mapAttendance(record: Prisma.AttendanceGetPayload<{
   };
 }
 
-async function getCurrentUser() {
+function mapTraineeAttendance(record: Prisma.TraineeAttendanceGetPayload<{
+  include: {
+    trainee: {
+      select: {
+        fullName: true;
+        traineeCode: true;
+        departmentId: true;
+      };
+    };
+  };
+}>): AttendanceRecord {
+  // Parse status from trainee attendance (stored as string)
+  let status: AttendanceStatus = AttendanceStatus.ABSENT;
+  const statusStr = record.status?.toUpperCase();
+  if (statusStr === "PRESENT") status = AttendanceStatus.PRESENT;
+  else if (statusStr === "LEAVE") status = AttendanceStatus.LEAVE;
+  else if (statusStr === "ABSENT") status = AttendanceStatus.ABSENT;
+  else if (statusStr === "HALF_DAY") status = AttendanceStatus.HALF_DAY;
+  else if (statusStr === "HOLIDAY") status = AttendanceStatus.HOLIDAY;
+
+  return {
+    id: record.id,
+    participantId: record.traineeId,
+    participantName: record.trainee.fullName,
+    participantCode: record.trainee.traineeCode,
+    departmentName: "-", // Trainees don't have department yet, can be extended if needed
+    departmentId: record.trainee.departmentId ?? undefined,
+    type: "trainee",
+    date: toDateInput(record.date),
+    checkIn: record.checkIn?.toISOString() ?? "",
+    checkOut: record.checkOut?.toISOString() ?? "",
+    workingHours: record.workingHours,
+    status,
+    isLate: record.isLate ?? false,
+    isHalfDay: record.isHalfDay ?? false,
+    remarks: record.remarks ?? "",
+    createdAt: record.createdAt.toISOString(),
+    updatedAt: record.updatedAt.toISOString(),
+  };
+}
+
+async function getCurrentUser(): Promise<CurrentAttendanceUser> {
   const session = await auth();
 
   if (!session?.user?.email) {
     throw new Error("Unauthorized");
+  }
+
+  if (session.user.accountType === "trainee") {
+    const traineeProfile = await prisma.trainee.findUnique({
+      where: { id: session.user.id },
+      select: {
+        id: true,
+        fullName: true,
+        traineeCode: true,
+        departmentId: true,
+      },
+    });
+
+    if (!traineeProfile) {
+      throw new Error("Trainee profile not found");
+    }
+
+    return {
+      id: session.user.id,
+      email: session.user.email,
+      role: {
+        name: "trainee",
+      },
+      accountType: "trainee" as const,
+      employeeProfile: null,
+      traineeProfile,
+    };
   }
 
   if (session.user.role?.toLowerCase() === "employee") {
@@ -227,7 +248,9 @@ async function getCurrentUser() {
           ? "HR"
           : "employee",
       },
+      accountType: "employee" as const,
       employeeProfile,
+      traineeProfile: null,
     };
   }
 
@@ -253,7 +276,9 @@ async function getCurrentUser() {
 
   return {
     ...user,
+    accountType: session.user.accountType ?? "user",
     employeeProfile,
+    traineeProfile: null,
   };
 }
 
@@ -261,6 +286,13 @@ async function requireAttendancePermission(
   action: "view" | "create" | "edit" | "delete",
 ) {
   const currentUser = await getCurrentUser();
+  if (
+    currentUser.accountType === "trainee" &&
+    (action === "view" || action === "create")
+  ) {
+    return currentUser;
+  }
+
   const permissions = await getRoutePermissions(ATTENDANCE_ROUTE);
   const canManageFromJobRole = canManageAllAttendance(currentUser.role?.name);
   const allowed =
@@ -282,9 +314,28 @@ async function requireAttendancePermission(
 function requireSelfScope(
   currentUser: Awaited<ReturnType<typeof getCurrentUser>>,
   employeeId?: string,
+  type?: "employee" | "trainee",
 ) {
   if (canManageAllAttendance(currentUser.role?.name)) {
     return employeeId;
+  }
+
+  if (currentUser.accountType === "trainee") {
+    const traineeId = currentUser.traineeProfile?.id;
+
+    if (!traineeId) {
+      throw new Error("Trainee profile not found for current user");
+    }
+
+    if (employeeId && employeeId !== traineeId) {
+      throw new Error("Users can access only their own attendance");
+    }
+
+    if (type && type !== "trainee") {
+      throw new Error("Trainees can only access trainee attendance");
+    }
+
+    return traineeId;
   }
 
   if (!currentUser.employeeProfile?.id) {
@@ -292,7 +343,7 @@ function requireSelfScope(
   }
 
   if (employeeId && employeeId !== currentUser.employeeProfile.id) {
-    throw new Error("Employees can access only their own attendance");
+    throw new Error("Users can access only their own attendance");
   }
 
   return currentUser.employeeProfile.id;
@@ -300,10 +351,38 @@ function requireSelfScope(
 
 export async function getAttendanceOptions() {
   const currentUser = await requireAttendancePermission("view");
+  if (currentUser.accountType === "trainee") {
+    const trainee = currentUser.traineeProfile;
+
+    return {
+      employees: [],
+      trainees: trainee
+        ? [
+            {
+              id: trainee.id,
+              fullName: trainee.fullName,
+              traineeCode: trainee.traineeCode,
+              departmentId: trainee.departmentId,
+            },
+          ]
+        : [],
+      departments: trainee?.departmentId
+        ? [
+            {
+              id: trainee.departmentId,
+              name: "-",
+            },
+          ]
+        : [],
+    };
+  }
+
   const employeeScoped = !canManageAllAttendance(currentUser.role?.name);
 
   if (employeeScoped && !currentUser.employeeProfile?.id) {
-    throw new Error("Employee profile not found for current user");
+    if (currentUser.accountType !== "trainee") {
+      throw new Error("Employee profile not found for current user");
+    }
   }
 
   const scopedEmployeeId = employeeScoped
@@ -313,7 +392,7 @@ export async function getAttendanceOptions() {
     ? currentUser.employeeProfile?.departmentId
     : undefined;
 
-  const [employees, departments] = await Promise.all([
+  const [employees, trainees, departments] = await Promise.all([
     prisma.employeeProfile.findMany({
       where: scopedEmployeeId ? { id: scopedEmployeeId } : undefined,
       orderBy: [{ employeeName: "asc" }, { employeeCode: "asc" }],
@@ -321,6 +400,19 @@ export async function getAttendanceOptions() {
         id: true,
         employeeName: true,
         employeeCode: true,
+        departmentId: true,
+      },
+    }),
+    prisma.trainee.findMany({
+      where: {
+        status: "ACTIVE",
+        ...(employeeScoped ? { id: scopedEmployeeId } : {}),
+      },
+      orderBy: [{ fullName: "asc" }, { traineeCode: "asc" }],
+      select: {
+        id: true,
+        fullName: true,
+        traineeCode: true,
         departmentId: true,
       },
     }),
@@ -334,77 +426,145 @@ export async function getAttendanceOptions() {
     }),
   ]);
 
-  return { employees, departments };
+  return { employees, trainees, departments };
 }
 
 export async function markAttendance(
   input: MarkAttendanceInput,
 ): Promise<ActionResponse<AttendanceRecord>> {
   try {
-    const currentUser = await requireAttendancePermission("create");
-    const employeeId = requireSelfScope(currentUser, input.employeeId);
-    if (!employeeId) {
-      throw new Error("Employee is required");
-    }
+  const currentUser = await requireAttendancePermission("create");
+  const type =
+    input.type ??
+    (currentUser.accountType === "trainee" ? "trainee" : "employee");
+  const participantId = requireSelfScope(
+    currentUser,
+    input.participantId,
+    type,
+  );
+
+  if (!participantId) {
+    throw new Error("Participant is required");
+  }
+
     const date = toDateOnly(input.date);
-    const existing = await prisma.attendance.findUnique({
-      where: { employeeId_date: { employeeId, date } },
-    });
-
     const now = new Date();
-    const checkIn = input.checkIn
-      ? new Date(input.checkIn)
-      : existing?.checkIn ?? now;
-    const checkOut = input.checkOut
-      ? new Date(input.checkOut)
-      : existing?.checkIn
-        ? now
-        : null;
-    const calculated = resolveStatus(checkIn, checkOut);
 
-    const attendance = await prisma.attendance.upsert({
-      where: { employeeId_date: { employeeId, date } },
-      update: {
-        checkIn,
-        checkOut,
-        workingHours: calculated.workingHours,
-        status: calculated.status,
-        isLate: calculated.isLate,
-        isHalfDay: calculated.isHalfDay,
-        remarks: input.remarks || existing?.remarks || null,
-      },
-      create: {
-        employeeId,
-        date,
-        checkIn,
-        checkOut,
-        workingHours: calculated.workingHours,
-        status: calculated.status,
-        isLate: calculated.isLate,
-        isHalfDay: calculated.isHalfDay,
-        remarks: input.remarks || null,
-      },
-      include: {
-        employee: {
-          include: {
-            department: true,
+    if (type === "trainee") {
+      // Get existing trainee attendance
+      const existing = await prisma.traineeAttendance.findUnique({
+        where: { traineeId_date: { traineeId: participantId, date } },
+      });
+      const checkIn = input.checkIn
+        ? new Date(input.checkIn)
+        : existing?.checkIn ?? now;
+      const checkOut = input.checkOut
+        ? new Date(input.checkOut)
+        : existing?.checkOut ?? (existing?.checkIn ? now : null);
+      const calculated = resolveAttendanceStatus(checkIn, checkOut);
+
+      const attendance = await prisma.traineeAttendance.upsert({
+        where: { traineeId_date: { traineeId: participantId, date } },
+        update: {
+          checkIn,
+          checkOut,
+          workingHours: calculated.workingHours,
+          status: calculated.status,
+          isLate: calculated.isLate,
+          isHalfDay: calculated.isHalfDay,
+          remarks: input.remarks || existing?.remarks || null,
+        },
+        create: {
+          traineeId: participantId,
+          date,
+          checkIn,
+          checkOut,
+          workingHours: calculated.workingHours,
+          status: calculated.status,
+          isLate: calculated.isLate,
+          isHalfDay: calculated.isHalfDay,
+          remarks: input.remarks || null,
+        },
+        include: {
+          trainee: {
+            select: {
+              fullName: true,
+              traineeCode: true,
+              departmentId: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    revalidatePath(ATTENDANCE_ROUTE);
-    revalidatePath("/attendance/my");
-    revalidatePath("/attendance/mark");
-    revalidatePath("/attendance/sheet");
+      revalidatePath(ATTENDANCE_ROUTE);
+      revalidatePath("/attendance/my");
+      revalidatePath("/attendance/mark");
+      revalidatePath("/attendance/sheet");
 
-    return {
-      success: true,
-      message: attendance.checkOut
-        ? "Attendance updated successfully"
-        : "Check-in recorded successfully",
-      data: mapAttendance(attendance),
-    };
+      return {
+        success: true,
+        message: attendance.checkOut
+          ? "Attendance updated successfully"
+          : "Check-in recorded successfully",
+        data: mapTraineeAttendance(attendance),
+      };
+    } else {
+      // Employee attendance
+      const existing = await prisma.attendance.findUnique({
+        where: { employeeId_date: { employeeId: participantId, date } },
+      });
+      const checkIn = input.checkIn
+        ? new Date(input.checkIn)
+        : existing?.checkIn ?? now;
+      const checkOut = input.checkOut
+        ? new Date(input.checkOut)
+        : existing?.checkOut ?? (existing?.checkIn ? now : null);
+      const calculated = resolveAttendanceStatus(checkIn, checkOut);
+
+      const attendance = await prisma.attendance.upsert({
+        where: { employeeId_date: { employeeId: participantId, date } },
+        update: {
+          checkIn,
+          checkOut,
+          workingHours: calculated.workingHours,
+          status: calculated.status,
+          isLate: calculated.isLate,
+          isHalfDay: calculated.isHalfDay,
+          remarks: input.remarks || existing?.remarks || null,
+        },
+        create: {
+          employeeId: participantId,
+          date,
+          checkIn,
+          checkOut,
+          workingHours: calculated.workingHours,
+          status: calculated.status,
+          isLate: calculated.isLate,
+          isHalfDay: calculated.isHalfDay,
+          remarks: input.remarks || null,
+        },
+        include: {
+          employee: {
+            include: {
+              department: true,
+            },
+          },
+        },
+      });
+
+      revalidatePath(ATTENDANCE_ROUTE);
+      revalidatePath("/attendance/my");
+      revalidatePath("/attendance/mark");
+      revalidatePath("/attendance/sheet");
+
+      return {
+        success: true,
+        message: attendance.checkOut
+          ? "Attendance updated successfully"
+          : "Check-in recorded successfully",
+        data: mapAttendance(attendance),
+      };
+    }
   } catch (error) {
     return {
       success: false,
@@ -420,46 +580,61 @@ export async function getMonthlyAttendance(
   const today = new Date();
   const year = filters.year ?? today.getFullYear();
   const month = filters.month ?? today.getMonth() + 1;
-  const employeeId = requireSelfScope(currentUser, filters.employeeId);
+  const participantId =
+    filters.participantId ??
+    (currentUser.accountType === "trainee"
+      ? currentUser.traineeProfile?.id
+      : undefined);
+  const type =
+    filters.type ?? (currentUser.accountType === "trainee" ? "trainees" : "all");
   const { start, end, daysInMonth } = getMonthRange(year, month);
-
-  const employees = await prisma.employeeProfile.findMany({
-    where: {
-      ...(employeeId ? { id: employeeId } : {}),
-      ...(filters.departmentId && canManageAllAttendance(currentUser.role?.name)
-        ? { departmentId: filters.departmentId }
-        : {}),
-    },
-    orderBy: [{ employeeName: "asc" }, { employeeCode: "asc" }],
+  const departments = await prisma.department.findMany({
     select: {
       id: true,
-      employeeName: true,
-      employeeCode: true,
-      department: {
-        select: {
-          name: true,
-        },
-      },
-      attendances: {
-        where: {
-          date: {
-            gte: start,
-            lt: end,
-          },
-        },
-        select: {
-          date: true,
-          status: true,
-        },
-      },
+      name: true,
     },
   });
+  const departmentLookup = new Map(
+    departments.map((department) => [department.id, department.name]),
+  );
 
-  return {
-    year,
-    month,
-    daysInMonth,
-    rows: employees.map((employee) => {
+  const rows: AttendanceGridRow[] = [];
+
+  // Fetch employees
+  if (type === "all" || type === "employees") {
+    const employees = await prisma.employeeProfile.findMany({
+      where: {
+        ...(participantId ? { id: participantId } : {}),
+        ...(filters.departmentId && canManageAllAttendance(currentUser.role?.name)
+          ? { departmentId: filters.departmentId }
+          : {}),
+      },
+      orderBy: [{ employeeName: "asc" }, { employeeCode: "asc" }],
+      select: {
+        id: true,
+        employeeName: true,
+        employeeCode: true,
+        department: {
+          select: {
+            name: true,
+          },
+        },
+        attendances: {
+          where: {
+            date: {
+              gte: start,
+              lt: end,
+            },
+          },
+          select: {
+            date: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    employees.forEach((employee) => {
       const days: AttendanceGridRow["days"] = {};
       const totals = {
         present: 0,
@@ -484,26 +659,131 @@ export async function getMonthlyAttendance(
         if (attendance.status === AttendanceStatus.HOLIDAY) totals.holidays += 1;
       });
 
-      return {
-        employeeId: employee.id,
-        employeeName: employee.employeeName,
-        employeeCode: employee.employeeCode,
+      rows.push({
+        participantId: employee.id,
+        participantName: employee.employeeName,
+        participantCode: employee.employeeCode,
         departmentName: employee.department?.name ?? "-",
+        type: "employee",
         days,
         totals,
+      });
+    });
+  }
+
+  // Fetch trainees
+  if (type === "all" || type === "trainees") {
+    const trainees = await prisma.trainee.findMany({
+      where: {
+        ...(participantId ? { id: participantId } : {}),
+        status: "ACTIVE",
+        ...(filters.departmentId && canManageAllAttendance(currentUser.role?.name)
+          ? { departmentId: filters.departmentId }
+          : {}),
+      },
+      orderBy: [{ fullName: "asc" }, { traineeCode: "asc" }],
+      select: {
+        id: true,
+        fullName: true,
+        traineeCode: true,
+        departmentId: true,
+        attendances: {
+          where: {
+            date: {
+              gte: start,
+              lt: end,
+            },
+          },
+          select: {
+            date: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    trainees.forEach((trainee) => {
+      const days: AttendanceGridRow["days"] = {};
+      const totals = {
+        present: 0,
+        leaves: 0,
+        absents: 0,
+        halfDays: 0,
+        holidays: 0,
       };
-    }),
+
+      for (let day = 1; day <= daysInMonth; day += 1) {
+        days[day] = "";
+      }
+
+      trainee.attendances.forEach((attendance) => {
+        const day = attendance.date.getUTCDate();
+        let status: AttendanceStatus = AttendanceStatus.ABSENT;
+        const statusStr = attendance.status?.toUpperCase();
+        if (statusStr === "PRESENT") status = AttendanceStatus.PRESENT;
+        else if (statusStr === "LEAVE") status = AttendanceStatus.LEAVE;
+        else if (statusStr === "ABSENT") status = AttendanceStatus.ABSENT;
+        else if (statusStr === "HALF_DAY") status = AttendanceStatus.HALF_DAY;
+        else if (statusStr === "HOLIDAY") status = AttendanceStatus.HOLIDAY;
+
+        days[day] = status;
+
+        if (status === AttendanceStatus.PRESENT) totals.present += 1;
+        if (status === AttendanceStatus.LEAVE) totals.leaves += 1;
+        if (status === AttendanceStatus.ABSENT) totals.absents += 1;
+        if (status === AttendanceStatus.HALF_DAY) totals.halfDays += 1;
+        if (status === AttendanceStatus.HOLIDAY) totals.holidays += 1;
+      });
+
+      rows.push({
+        participantId: trainee.id,
+        participantName: trainee.fullName,
+        participantCode: trainee.traineeCode,
+        departmentName: trainee.departmentId
+          ? departmentLookup.get(trainee.departmentId) ?? "-"
+          : "-",
+        type: "trainee",
+        days,
+        totals,
+      });
+    });
+  }
+
+  return {
+    year,
+    month,
+    daysInMonth,
+    rows,
   };
 }
 
 export async function getEmployeeAttendanceRecords(
-  employeeId: string,
+  participantId: string,
+  type?: "employee" | "trainee",
 ): Promise<AttendanceRecord[]> {
   const currentUser = await requireAttendancePermission("view");
-  const scopedEmployeeId = requireSelfScope(currentUser, employeeId);
+  const scopedParticipantId = requireSelfScope(currentUser, participantId);
 
+  if (type === "trainee") {
+    const records = await prisma.traineeAttendance.findMany({
+      where: { traineeId: scopedParticipantId },
+      orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+      include: {
+        trainee: {
+          select: {
+            fullName: true,
+            traineeCode: true,
+            departmentId: true,
+          },
+        },
+      },
+    });
+    return records.map(mapTraineeAttendance);
+  }
+
+  // Default to employee
   const records = await prisma.attendance.findMany({
-    where: { employeeId: scopedEmployeeId },
+    where: { employeeId: scopedParticipantId },
     orderBy: [{ date: "desc" }, { createdAt: "desc" }],
     include: {
       employee: {
@@ -523,14 +803,96 @@ export async function updateAttendance(
 ): Promise<ActionResponse<AttendanceRecord>> {
   try {
     const currentUser = await requireAttendancePermission("edit");
-    requireSelfScope(currentUser, input.employeeId);
+    requireSelfScope(currentUser, input.participantId);
 
     if (!canManageAllAttendance(currentUser.role?.name)) {
       throw new Error("Only Admin or HR can edit attendance records directly");
     }
 
+    const isTrainee = input.type === "trainee";
+
+    if (isTrainee) {
+      const existing = await prisma.traineeAttendance.findUnique({
+        where: { id },
+        include: {
+          trainee: {
+            select: {
+              fullName: true,
+              traineeCode: true,
+              departmentId: true,
+            },
+          },
+        },
+      });
+
+      if (!existing) {
+        throw new Error("Attendance record not found");
+      }
+
+      const checkIn =
+        input.checkIn === null
+          ? null
+          : input.checkIn
+            ? new Date(input.checkIn)
+            : existing.checkIn;
+      const checkOut =
+        input.checkOut === null
+          ? null
+          : input.checkOut
+            ? new Date(input.checkOut)
+            : existing.checkOut;
+      const calculated = resolveAttendanceStatus(checkIn, checkOut, input.status);
+
+      const attendance = await prisma.traineeAttendance.update({
+        where: { id },
+        data: {
+          traineeId: input.participantId ?? existing.traineeId,
+          date: input.date ? toDateOnly(input.date) : existing.date,
+          checkIn,
+          checkOut,
+          workingHours: calculated.workingHours,
+          status: calculated.status,
+          isLate: calculated.isLate,
+          isHalfDay: calculated.isHalfDay,
+          remarks: input.remarks === undefined ? existing.remarks : input.remarks,
+        },
+        include: {
+          trainee: {
+            select: {
+              fullName: true,
+              traineeCode: true,
+              departmentId: true,
+            },
+          },
+        },
+      });
+
+      revalidatePath(ATTENDANCE_ROUTE);
+      revalidatePath("/attendance/my");
+      revalidatePath("/attendance/sheet");
+      revalidatePath("/attendance/report");
+      revalidatePath("/attendance");
+      if (input.participantId) {
+        revalidatePath(`/trainees/${input.participantId}/attendance`);
+        revalidatePath("/trainee-dashboard/attendance");
+      }
+
+      return {
+        success: true,
+        message: "Attendance record updated successfully",
+        data: mapTraineeAttendance(attendance),
+      };
+    }
+
     const existing = await prisma.attendance.findUnique({
       where: { id },
+      include: {
+        employee: {
+          include: {
+            department: true,
+          },
+        },
+      },
     });
 
     if (!existing) {
@@ -549,12 +911,12 @@ export async function updateAttendance(
         : input.checkOut
           ? new Date(input.checkOut)
           : existing.checkOut;
-    const calculated = resolveStatus(checkIn, checkOut, input.status);
+    const calculated = resolveAttendanceStatus(checkIn, checkOut, input.status);
 
     const attendance = await prisma.attendance.update({
       where: { id },
       data: {
-        employeeId: input.employeeId ?? existing.employeeId,
+        employeeId: input.participantId ?? existing.employeeId,
         date: input.date ? toDateOnly(input.date) : existing.date,
         checkIn,
         checkOut,
@@ -576,6 +938,8 @@ export async function updateAttendance(
     revalidatePath(ATTENDANCE_ROUTE);
     revalidatePath("/attendance/my");
     revalidatePath("/attendance/sheet");
+    revalidatePath("/attendance/report");
+    revalidatePath("/attendance");
 
     return {
       success: true,
@@ -598,13 +962,52 @@ export async function deleteAttendance(id: string): Promise<ActionResponse> {
       throw new Error("Only admins can delete attendance records");
     }
 
-    await prisma.attendance.delete({
+    const employeeRecord = await prisma.attendance.findUnique({
       where: { id },
+      include: {
+        employee: {
+          include: {
+            department: true,
+          },
+        },
+      },
     });
+    const traineeRecord = employeeRecord
+      ? null
+      : await prisma.traineeAttendance.findUnique({
+          where: { id },
+        include: {
+          trainee: {
+            select: {
+              fullName: true,
+              traineeCode: true,
+              departmentId: true,
+            },
+          },
+        },
+      });
+
+    if (employeeRecord) {
+      await prisma.attendance.delete({
+        where: { id },
+      });
+    } else if (traineeRecord) {
+      await prisma.traineeAttendance.delete({
+        where: { id },
+      });
+    } else {
+      throw new Error("Attendance record not found");
+    }
 
     revalidatePath(ATTENDANCE_ROUTE);
     revalidatePath("/attendance/my");
     revalidatePath("/attendance/sheet");
+    revalidatePath("/attendance/report");
+    revalidatePath("/attendance");
+    if (traineeRecord) {
+      revalidatePath(`/trainees/${traineeRecord.traineeId}/attendance`);
+      revalidatePath("/trainee-dashboard/attendance");
+    }
 
     return {
       success: true,
@@ -621,13 +1024,14 @@ export async function deleteAttendance(id: string): Promise<ActionResponse> {
 export async function getAttendanceDashboard() {
   const currentUser = await requireAttendancePermission("view");
   const today = toDateOnly(new Date());
-  const scopedEmployeeId = requireSelfScope(currentUser);
+  const scopedParticipantId = requireSelfScope(currentUser);
 
-  const [todayRecords, monthlySheet] = await Promise.all([
+  // Fetch employee attendance
+  const [employeeRecords, traineeRecords, monthlySheet] = await Promise.all([
     prisma.attendance.findMany({
       where: {
         date: today,
-        ...(scopedEmployeeId ? { employeeId: scopedEmployeeId } : {}),
+        ...(scopedParticipantId ? { employeeId: scopedParticipantId } : {}),
       },
       include: {
         employee: {
@@ -640,12 +1044,35 @@ export async function getAttendanceDashboard() {
         createdAt: "desc",
       },
     }),
+    prisma.traineeAttendance.findMany({
+      where: {
+        date: today,
+        ...(scopedParticipantId ? { traineeId: scopedParticipantId } : {}),
+      },
+      include: {
+        trainee: {
+          select: {
+            fullName: true,
+            traineeCode: true,
+            departmentId: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    }),
     getMonthlyAttendance({
       year: today.getUTCFullYear(),
       month: today.getUTCMonth() + 1,
-      employeeId: scopedEmployeeId,
+      participantId: scopedParticipantId,
     }),
   ]);
+
+  const todayRecords = [
+    ...employeeRecords.map(mapAttendance),
+    ...traineeRecords.map(mapTraineeAttendance),
+  ];
 
   const summary = monthlySheet.rows.reduce(
     (acc, row) => {
@@ -660,7 +1087,12 @@ export async function getAttendanceDashboard() {
 
   return {
     summary,
-    todayRecords: todayRecords.map(mapAttendance),
+    todayRecords,
+    currentParticipantId:
+      scopedParticipantId ||
+      currentUser.employeeProfile?.id ||
+      currentUser.traineeProfile?.id ||
+      "",
     currentEmployeeId: currentUser.employeeProfile?.id ?? "",
   };
 }

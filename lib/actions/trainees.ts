@@ -5,6 +5,8 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 import type { Trainee } from "@/types";
+import { sanitizeStoredFileUrl } from "../document-uploads";
+import { buildTraineeDocumentUrls } from "../trainee-documents";
 import { prisma } from "../prisma";
 import { formatError } from "../utils";
 import { traineeSchema } from "../validators";
@@ -205,17 +207,9 @@ export async function createTraineeProfile(
   data: Trainee,
 ): Promise<ActionResponse> {
   try {
-    console.log("RAW TRAINEE DATA");
-console.log(data);
+    const record = traineeSchema.parse(data);
 
-const record = traineeSchema.parse(data);
-
-console.log("VALIDATED RECORD");
-console.log(record);
-
-const traineeCode = await generateTraineeCode();
-
-console.log("GENERATED CODE", traineeCode);
+    const traineeCode = await generateTraineeCode();
 
     const applicantDocument = record.applicantDocumentId
       ? await prisma.applicantDocument.findFirst({
@@ -227,6 +221,8 @@ console.log("GENERATED CODE", traineeCode);
             id: true,
             traineeId: true,
             documentPayload: true,
+            aadhaarFileUrl: true,
+            panFileUrl: true,
           },
         })
       : null;
@@ -265,8 +261,18 @@ console.log("GENERATED CODE", traineeCode);
           []) as Prisma.InputJsonValue,
         experienceEntries: (record.experienceEntries ??
           []) as Prisma.InputJsonValue,
-        uploadedDocumentUrls: (record.uploadedDocumentUrls ??
-          []) as Prisma.InputJsonValue,
+        uploadedDocumentUrls: (
+          applicantDocument
+            ? buildTraineeDocumentUrls(
+                ({
+                  ...(applicantDocument.documentPayload as Record<string, unknown>),
+                  ...applicantDocument,
+                } as unknown),
+              )
+            : (record.uploadedDocumentUrls ?? [])
+                .map((url) => sanitizeStoredFileUrl(url))
+                .filter(Boolean)
+        ) as Prisma.InputJsonValue,
         onboardingPayload: buildOnboardingPayload(record),
         trainingBatch: record.trainingBatch || null,
         trainerName: record.trainerName || null,

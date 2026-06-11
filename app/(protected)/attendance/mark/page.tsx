@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { AttendanceMarkPanel } from "@/components/attendance/attendance-mark-panel";
 import {
+  getAttendanceOptions,
   getAttendanceDashboard,
 } from "@/lib/actions/attendance";
 import {
@@ -22,10 +23,31 @@ export default async function MarkAttendancePage() {
     redirect("/attendance/my");
   }
 
-  const dashboard = await getAttendanceDashboard();
-  const employeeId = dashboard.currentEmployeeId;
+  const [dashboard, options] = await Promise.all([
+    getAttendanceDashboard(),
+    getAttendanceOptions(),
+  ]);
+  const participants = [
+    ...options.employees.map((employee) => ({
+      id: employee.id,
+      name: employee.employeeName,
+      code: employee.employeeCode,
+      type: "employee" as const,
+    })),
+    ...options.trainees.map((trainee) => ({
+      id: trainee.id,
+      name: trainee.fullName,
+      code: trainee.traineeCode,
+      type: "trainee" as const,
+    })),
+  ];
+  const participantId =
+    dashboard.currentParticipantId || participants[0]?.id || "";
+  const selectedParticipant = participants.find((participant) => participant.id === participantId);
   const todayRecord = dashboard.todayRecords.find(
-    (record) => record.employeeId === employeeId,
+    (record) =>
+      record.participantId === participantId &&
+      (!selectedParticipant || record.type === selectedParticipant.type),
   );
 
   return (
@@ -37,18 +59,22 @@ export default async function MarkAttendancePage() {
               Attendance Action
             </p>
             <h1 className="mt-3 text-2xl font-semibold text-slate-900 md:text-3xl">
-              My Check In
+              Mark Attendance
             </h1>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              Record your own check-in and check-out for the current day.
+              Record check-in and check-out for employees or trainees from the
+              shared attendance hub.
             </p>
           </div>
         </div>
       </section>
       <AttendanceMarkPanel
-        employeeId={employeeId}
+        participantId={participantId}
+        participants={participants}
         todayRecord={todayRecord}
+        todayRecords={dashboard.todayRecords}
         canCreate={permissions.canCreate}
+        canChooseParticipant
       />
     </div>
   );

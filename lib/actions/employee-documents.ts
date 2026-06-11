@@ -12,6 +12,7 @@ import {
   markApplicantDocumentsSubmitted,
 } from "./recruitment";
 import { isHrJobRoleName } from "../employee-job-role";
+import { sanitizeStoredFileUrl } from "../document-uploads";
 import {
   DOCUMENT_VERIFICATION_STATUSES,
   type DocumentVerificationStatus,
@@ -397,9 +398,34 @@ type PrismaApplicantDocumentRecord = Prisma.ApplicantDocumentGetPayload<{
 }>;
 
 function getDocumentPayload(record: PrismaApplicantDocumentRecord) {
-  const payload = (record.documentPayload ?? {}) as Partial<EmployeeDocument>;
-  console.log("RESTORED DOCUMENT PAYLOAD KEYS", Object.keys(payload));
-  return payload;
+  return sanitizeDocumentPayload(
+    (record.documentPayload ?? {}) as Partial<EmployeeDocument>,
+  );
+}
+
+function sanitizeDocumentPayload<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((entry) => sanitizeDocumentPayload(entry)) as T;
+  }
+
+  if (value && typeof value === "object") {
+    const next: Record<string, unknown> = {};
+
+    for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+      if (typeof entry === "string") {
+        const shouldSanitize =
+          /url$/i.test(key) || /fileurl$/i.test(key) || key === "url";
+        next[key] = shouldSanitize ? sanitizeStoredFileUrl(entry) : entry;
+        continue;
+      }
+
+      next[key] = sanitizeDocumentPayload(entry);
+    }
+
+    return next as T;
+  }
+
+  return value;
 }
 
 function mapPrismaEmployeeDocument(
@@ -510,7 +536,7 @@ function normalizeApplicantDocument(input: EmployeeDocument): EmployeeDocument {
   const ownerName = applicantName;
   const ownerCode = input.applicantCode?.trim() || "";
 
-  return {
+  return sanitizeDocumentPayload({
     ...input,
     id: input.id ?? crypto.randomUUID(),
     documentOwnerType: "APPLICANT",
@@ -545,7 +571,7 @@ function normalizeApplicantDocument(input: EmployeeDocument): EmployeeDocument {
     applicantName,
     ownerName,
     ownerCode,
-  };
+  });
 }
 
 async function getApplicantEmailForReview(record: EmployeeDocument) {

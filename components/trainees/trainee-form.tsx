@@ -6,10 +6,15 @@ import {
   getNextTraineeCodePreview,
 } from "@/lib/actions/trainees";
 import { traineeDefaultValues } from "@/lib/constants";
+import { isImagePreviewUrl } from "@/lib/document-uploads";
+import {
+  buildTraineeDocumentSummary,
+  buildTraineeDocumentUrls,
+} from "@/lib/trainee-documents";
 import { traineeSchema } from "@/lib/validators";
 import type { EmployeeDocument, Trainee } from "@/types";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowRight, FileText, Loader2 } from "lucide-react";
+import { ArrowRight, Download, Eye, FileText, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React from "react";
 import { type Resolver, SubmitHandler, useForm } from "react-hook-form";
@@ -17,6 +22,7 @@ import { toast } from "sonner";
 import z from "zod";
 
 import { Button } from "../ui/button";
+import { Badge } from "../ui/badge";
 import {
   Form,
   FormControl,
@@ -66,6 +72,26 @@ type ApplicantDocumentPrefill = Pick<
   | "emergencyContactNumber"
   | "educationEntries"
   | "experienceEntries"
+  | "passportPhotoFileUrl"
+  | "passportFileUrl"
+  | "drivingLicenseFileUrl"
+  | "voterIdFileUrl"
+  | "addressProofFileUrl"
+  | "class10MarksheetFileUrl"
+  | "class12MarksheetFileUrl"
+  | "highestQualificationFileUrl"
+  | "additionalDegreesFileUrl"
+  | "professionalCertificationsFileUrl"
+  | "experienceLetterFileUrl"
+  | "relievingLetterFileUrl"
+  | "salarySlip1FileUrl"
+  | "salarySlip2FileUrl"
+  | "salarySlip3FileUrl"
+  | "previousOfferLetterFileUrl"
+  | "promotionAppraisalLettersFileUrl"
+  | "bankProofFileUrl"
+  | "pfPassbookFileUrl"
+  | "pfTransferDocumentsFileUrl"
   | "aadhaarFileUrl"
   | "panFileUrl"
 > & {
@@ -116,9 +142,7 @@ function buildPrefill(document: ApplicantDocumentPrefill) {
     emergencyContactPhone: document.emergencyContactNumber || "",
     educationEntries: document.educationEntries ?? [],
     experienceEntries: document.experienceEntries ?? [],
-    uploadedDocumentUrls: [document.aadhaarFileUrl, document.panFileUrl].filter(
-      Boolean,
-    ) as string[],
+    uploadedDocumentUrls: buildTraineeDocumentUrls(document),
   };
 }
 
@@ -129,6 +153,13 @@ const TraineeForm = ({ data, initialApplicantDocument }: Props) => {
   const [departments, setDepartments] = React.useState<Option[]>([]);
   const [managers, setManagers] = React.useState<EmployeeOption[]>([]);
   const [isPending, startTransition] = React.useTransition();
+  const documentSummary = React.useMemo(
+    () =>
+      initialApplicantDocument
+        ? buildTraineeDocumentSummary(initialApplicantDocument)
+        : [],
+    [initialApplicantDocument],
+  );
 
   const form = useForm<TraineeFormValues>({
     resolver: zodResolver(traineeSchema) as Resolver<TraineeFormValues>,
@@ -187,9 +218,6 @@ const TraineeForm = ({ data, initialApplicantDocument }: Props) => {
   }, [data, form]);
 
   const onSubmit: SubmitHandler<TraineeFormValues> = async (values) => {
-    console.log("FORM SUBMITTED");
-    console.log(values);
-
     startTransition(async () => {
       const result = await createTraineeProfile(values);
 
@@ -203,7 +231,29 @@ const TraineeForm = ({ data, initialApplicantDocument }: Props) => {
       router.refresh();
     });
   };
-  console.log("FORM ERRORS", form.formState.errors);
+
+  function openDocument(url: string) {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  function downloadDocument(url: string) {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = url.split("/").pop() || "document";
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
 
   return (
     <Form {...form}>
@@ -505,6 +555,86 @@ const TraineeForm = ({ data, initialApplicantDocument }: Props) => {
                 </FormItem>
               )}
             />
+          </div>
+
+          <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h4 className="text-base font-semibold text-slate-900">
+                  Documents Available
+                </h4>
+                <p className="mt-1 text-sm text-slate-500">
+                  HR reviews uploaded applicant documents here without exposing
+                  raw URLs or Base64 data.
+                </p>
+              </div>
+              <Badge variant="outline" className="border-cyan-200 text-cyan-700">
+                {documentSummary.filter((item) => item.urls.length > 0).length} of{" "}
+                {documentSummary.length} available
+              </Badge>
+            </div>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {documentSummary.map((item) => {
+                const hasFiles = item.urls.length > 0;
+
+                return (
+                  <div
+                    key={item.key}
+                    className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-slate-900">{item.label}</p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {hasFiles
+                            ? `${item.urls.length} file${item.urls.length > 1 ? "s" : ""} available`
+                            : "Not uploaded"}
+                        </p>
+                      </div>
+                      <Badge variant={hasFiles ? "default" : "outline"}>
+                        {hasFiles ? "Available" : "Missing"}
+                      </Badge>
+                    </div>
+
+                    {hasFiles ? (
+                      <div className="mt-3 space-y-2">
+                        {item.urls.map((url, index) => (
+                          <div
+                            key={`${item.key}-${index}`}
+                            className="flex flex-wrap items-center gap-2"
+                          >
+                            <span className="text-xs font-medium text-slate-500">
+                              File {index + 1}
+                            </span>
+                            {isImagePreviewUrl(url) || url.toLowerCase().includes(".pdf") ? (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openDocument(url)}
+                              >
+                                <Eye className="size-4" />
+                                Preview
+                              </Button>
+                            ) : null}
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => downloadDocument(url)}
+                            >
+                              <Download className="size-4" />
+                              Download
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 

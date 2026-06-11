@@ -27,15 +27,24 @@ export default async function MyAttendancePage() {
     redirect("/attendance");
   }
 
-  const [dashboard, sheet, options] = await Promise.all([
+  const [dashboard, options] = await Promise.all([
     getAttendanceDashboard(),
-    getMonthlyAttendance(),
     getAttendanceOptions(),
   ]);
-  const employeeId =
-    dashboard.currentEmployeeId || options.employees.at(0)?.id || "";
+  const participants = options.employees.map((employee) => ({
+    id: employee.id,
+    name: employee.employeeName,
+    code: employee.employeeCode,
+    type: "employee" as const,
+  }));
+  const participantId =
+    dashboard.currentParticipantId || participants.at(0)?.id || "";
+  const sheet = await getMonthlyAttendance({
+    participantId,
+    type: "employees",
+  });
   const todayRecord = dashboard.todayRecords.find(
-    (record) => record.employeeId === employeeId,
+    (record) => record.participantId === participantId && record.type === "employee",
   );
 
   return (
@@ -90,8 +99,8 @@ export default async function MyAttendancePage() {
       </section>
 
       <AttendanceMarkPanel
-        employeeId={employeeId}
-        employees={options.employees}
+        participantId={participantId}
+        participants={participants}
         todayRecord={todayRecord}
         canCreate={permissions.canCreate}
       />
@@ -99,6 +108,7 @@ export default async function MyAttendancePage() {
       <AttendanceSheet
         initialSheet={sheet}
         employees={options.employees}
+        trainees={options.trainees}
         departments={options.departments}
         canFilterEmployees={false}
         title="My Monthly Records"
