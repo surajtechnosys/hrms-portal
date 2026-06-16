@@ -6,6 +6,8 @@ import { EmployeeProfile } from "@/types";
 import { DataTable } from "@/components/datatable/DataTable";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { EditIcon, Trash } from "lucide-react";
 
 interface EmployeeListProps {
   employees: EmployeeProfile[];
@@ -37,7 +39,9 @@ const columns: ColumnDef<EmployeeProfile>[] = [
       const employeeCode = row.original.employeeCode || "";
       return (
         <div className="min-w-[210px]">
-          <p className="font-semibold text-slate-900">{row.original.employeeName}</p>
+          <p className="font-semibold text-slate-900">
+            {row.original.employeeName}
+          </p>
           <Link
             href={`/employee-profiles/${employeeCode}`}
             className="text-xs font-medium uppercase tracking-wide text-sky-700 hover:underline"
@@ -54,15 +58,18 @@ const columns: ColumnDef<EmployeeProfile>[] = [
     header: "Contact",
     cell: ({ row }) => (
       <div className="min-w-[180px]">
-        <p className="font-medium text-slate-800">{row.original.phone || "-"}</p>
-        <p className="text-xs text-slate-500">{row.original.email || "No email"}</p>
+        <p className="font-medium text-slate-800">
+          {row.original.phone || "-"}
+        </p>
+        <p className="text-xs text-slate-500">
+          {row.original.email || "No email"}
+        </p>
       </div>
     ),
   },
   {
     id: "organization",
-    accessorFn: (row) =>
-      `${row.departmentName ?? ""} ${row.jobRoleName ?? ""}`,
+    accessorFn: (row) => `${row.departmentName ?? ""} ${row.jobRoleName ?? ""}`,
     header: "Organization",
     cell: ({ row }) => (
       <div className="min-w-[180px]">
@@ -93,8 +100,7 @@ const columns: ColumnDef<EmployeeProfile>[] = [
   },
   {
     id: "reporting",
-    accessorFn: (row) =>
-      `${row.managerName ?? ""} ${row.joiningDate ?? ""}`,
+    accessorFn: (row) => `${row.managerName ?? ""} ${row.joiningDate ?? ""}`,
     header: "Manager / Joining",
     cell: ({ row }) => (
       <div className="min-w-[170px]">
@@ -138,12 +144,35 @@ const columns: ColumnDef<EmployeeProfile>[] = [
     cell: ({ getValue }) => {
       const status = String(getValue() || "");
 
-      return (
-        <Badge className={getStatusBadge(status)}>
-          {status}
-        </Badge>
-      );
+      return <Badge className={getStatusBadge(status)}>{status}</Badge>;
     },
+  },
+  {
+    id: "actions",
+    header: "Action",
+    cell: ({ row }) => (
+      <div className="flex gap-2">
+        <Button
+          asChild
+          size="icon"
+          className="bg-orange-500 hover:bg-orange-600"
+        >
+          <Link href={`/employee-profiles/edit/${row.original.id}`}>
+            <EditIcon size={16} />
+          </Link>
+        </Button>
+
+        <Button
+          size="icon"
+          variant="destructive"
+          onClick={() => {
+            console.log("Delete", row.original.id);
+          }}
+        >
+          <Trash size={16} />
+        </Button>
+      </div>
+    ),
   },
 ];
 
