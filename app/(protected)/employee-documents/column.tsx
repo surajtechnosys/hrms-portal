@@ -24,47 +24,45 @@ export const getEmployeeDocumentColumns = ({
       id: "ownerName",
       header: "Name",
       size: 180,
-      cell: ({ row }) =>
-        (
-          <span
-            className="block max-w-[180px] truncate"
-            title={
-              row.original.ownerName ||
-              row.original.employeeName ||
-              row.original.candidateName ||
-              "-"
-            }
-          >
-            {row.original.ownerName ||
-              row.original.employeeName ||
-              row.original.candidateName ||
-              "-"}
-          </span>
-        ),
+      cell: ({ row }) => (
+        <span
+          className="block max-w-[180px] truncate"
+          title={
+            row.original.ownerName ||
+            row.original.employeeName ||
+            row.original.candidateName ||
+            "-"
+          }
+        >
+          {row.original.ownerName ||
+            row.original.employeeName ||
+            row.original.candidateName ||
+            "-"}
+        </span>
+      ),
     },
     {
       id: "ownerCode",
       header: "Employee / Applicant ID",
       size: 220,
-      cell: ({ row }) =>
-        (
-          <span
-            className="block max-w-[220px] truncate font-mono text-[13px]"
-            title={
-              row.original.ownerCode ||
-              row.original.employeeCode ||
-              row.original.applicantCode ||
-              row.original.applicantId ||
-              "-"
-            }
-          >
-            {row.original.ownerCode ||
-              row.original.employeeCode ||
-              row.original.applicantCode ||
-              row.original.applicantId ||
-              "-"}
-          </span>
-        ),
+      cell: ({ row }) => (
+        <span
+          className="block max-w-[220px] truncate font-mono text-[13px]"
+          title={
+            row.original.ownerCode ||
+            row.original.employeeCode ||
+            row.original.applicantCode ||
+            row.original.applicantId ||
+            "-"
+          }
+        >
+          {row.original.ownerCode ||
+            row.original.employeeCode ||
+            row.original.applicantCode ||
+            row.original.applicantId ||
+            "-"}
+        </span>
+      ),
     },
     {
       accessorKey: "dateOfBirth",
@@ -201,9 +199,11 @@ export const getEmployeeDocumentColumns = ({
                 Employee Created
               </Badge>
             ) : row.original.reviewStatus === "APPROVED" ? (
-              <Button asChild className="bg-cyan-600 hover:bg-cyan-700">
-                <Link href={`/trainees/create?applicantDocumentId=${id}`}>
-                  Create Trainee
+              <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
+                <Link
+                  href={`/employee-profiles/create?applicantDocumentId=${id}`}
+                >
+                  Create Employee
                 </Link>
               </Button>
             ) : null}
