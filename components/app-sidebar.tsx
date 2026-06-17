@@ -98,11 +98,11 @@ const onboardingMenuGroup: MenuGroup = {
       url: "/employee-documents",
       icon: <IdCard size={18} />,
     },
-    {
-      name: "Trainee Management",
-      url: "/trainees",
-      icon: <Users2Icon size={18} />,
-    },
+    // {
+    //   name: "Trainee Management",
+    //   url: "/trainees",
+    //   icon: <Users2Icon size={18} />,
+    // },
   ],
 };
 

@@ -33,9 +33,15 @@ export async function getCurrentEmployeeProfileForPortal() {
     },
   });
 }
-
 export async function isCurrentEmployeeHr() {
+  const session = await auth();
+
+  if (session?.user?.role?.toLowerCase() === "admin") {
+    return true;
+  }
+
   const employee = await getCurrentEmployeeProfileForPortal();
+
   return isHrJobRoleName(employee?.jobRole?.name);
 }
 

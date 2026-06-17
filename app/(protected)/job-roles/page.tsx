@@ -18,7 +18,7 @@ export default async function JobRolePage() {
         canView: true,
         canCreate: true,
         canEdit: true,
-        canDelete: false,
+        canDelete: true,
       }
     : routePermissions;
 

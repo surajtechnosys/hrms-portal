@@ -12,6 +12,7 @@ const EmployeeDocumentPage = async () => {
     getRoutePermissions(route),
     isCurrentEmployeeHr(),
   ]);
+  
   if (!isHrEmployee) {
     redirect("/404");
   }
