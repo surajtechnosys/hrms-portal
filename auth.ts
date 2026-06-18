@@ -18,15 +18,6 @@ type RecruitmentApplicantAuthRecord = {
   status?: string;
 };
 
-type TraineeAuthRecord = {
-  id?: string;
-  traineeCode?: string;
-  fullName?: string;
-  email?: string;
-  loginPassword?: string | null;
-  status?: string;
-};
-
 async function readRecruitmentApplicantsForAuth(): Promise<
   RecruitmentApplicantAuthRecord[]
 > {
@@ -51,38 +42,6 @@ async function readRecruitmentApplicantsForAuth(): Promise<
       applicantPortalId: record.applicantPortalId ?? undefined,
       applicantUsername: record.applicantUsername ?? undefined,
       applicantPasswordHash: record.applicantPasswordHash ?? undefined,
-      status: record.status ?? undefined,
-    }));
-  } catch {
-    return [];
-  }
-}
-
-async function readTraineesForAuth(): Promise<TraineeAuthRecord[]> {
-  try {
-    const records = (await prisma.trainee.findMany({
-      select: {
-        id: true,
-        traineeCode: true,
-        fullName: true,
-        email: true,
-        loginPassword: true,
-        status: true,
-      },
-    })) as Array<{
-      id: string;
-      traineeCode: string;
-      fullName: string;
-      email: string;
-      loginPassword: string | null;
-      status: string;
-    }>;
-
-    return records.map((record: TraineeAuthRecord) => ({
-      ...record,
-      email: record.email ?? undefined,
-      traineeCode: record.traineeCode ?? undefined,
-      loginPassword: record.loginPassword ?? undefined,
       status: record.status ?? undefined,
     }));
   } catch {
@@ -218,39 +177,6 @@ async function authorizeCredentials(username: string, password: string) {
         email: applicant.email ?? "",
         role: "applicant",
         accountType: "applicant",
-      };
-    }
-  }
-
-  const trainees = await readTraineesForAuth();
-  const trainee = trainees.find((record) => {
-    const normalizedIdentifier = identifier.toLowerCase();
-
-    return (
-      record.status === "ACTIVE" &&
-      !!record.loginPassword &&
-      [record.traineeCode, record.email]
-        .filter(Boolean)
-        .some((value) => value?.toLowerCase() === normalizedIdentifier)
-    );
-  });
-
-  if (trainee?.loginPassword) {
-    const isMatched = await bcrypt.compare(password, trainee.loginPassword);
-
-    if (isMatched) {
-      const [firstName = "", ...rest] = (trainee.fullName || "Trainee")
-        .trim()
-        .split(/\s+/);
-
-      return {
-        id: trainee.id ?? "",
-        username: trainee.traineeCode ?? trainee.email ?? "",
-        firstName,
-        lastName: rest.join(" "),
-        email: trainee.email ?? "",
-        role: "trainee",
-        accountType: "trainee",
       };
     }
   }

@@ -8,6 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { EditIcon, Trash } from "lucide-react";
+import {
+  formatRemainingDays,
+  getEmployeeTypeLabel,
+  getEmployeeTypeTone,
+  getEmploymentTrackingState,
+} from "@/lib/employee-employment";
 
 interface EmployeeListProps {
   employees: EmployeeProfile[];
@@ -37,14 +43,26 @@ const columns: ColumnDef<EmployeeProfile>[] = [
     header: "Employee",
     cell: ({ row }) => {
       const employeeCode = row.original.employeeCode || "";
+      const employmentState = getEmploymentTrackingState(row.original);
       return (
         <div className="min-w-[210px]">
           <p className="font-semibold text-slate-900">
             {row.original.employeeName}
           </p>
+          <Badge
+            className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ring-1 ${getEmployeeTypeTone(row.original.employeeType)}`}
+          >
+            {getEmployeeTypeLabel(row.original.employeeType)}
+          </Badge>
+          {employmentState.isTracked && (
+            <p className="mt-2 text-xs text-slate-500">
+              {employmentState.periodLabel} ends in{" "}
+              {formatRemainingDays(employmentState.remainingDays)}
+            </p>
+          )}
           <Link
             href={`/employee-profiles/${employeeCode}`}
-            className="text-xs font-medium uppercase tracking-wide text-sky-700 hover:underline"
+            className="mt-2 block text-xs font-medium uppercase tracking-wide text-sky-700 hover:underline"
           >
             {employeeCode}
           </Link>

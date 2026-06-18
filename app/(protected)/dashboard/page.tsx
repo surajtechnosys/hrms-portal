@@ -331,7 +331,7 @@ export default async function DashboardPage() {
     tasksByStatus,
     leaveRequests,
     documents,
-    todayAttendance,
+    employeeAttendanceToday,
     transfers,
   ] = await Promise.all([
     prisma.employeeProfile.findMany({
@@ -383,7 +383,9 @@ export default async function DashboardPage() {
       where: { date: today },
       orderBy: { createdAt: "desc" },
       take: 6,
-      include: { employee: { select: { employeeName: true, employeeCode: true } } },
+      include: {
+        employee: { select: { employeeName: true, employeeCode: true } },
+      },
     }),
     prisma.transferPromotion.findMany({
       orderBy: { effectiveDate: "desc" },
@@ -396,6 +398,15 @@ export default async function DashboardPage() {
   const activeProjects = projects.filter((project) => project.status === "ACTIVE");
   const pendingLeaves = leaveRequests.filter((request) => request.status === "PENDING");
   const pendingDocs = documents.filter((document) => document.reviewStatus === "PENDING");
+  const todayAttendance = [
+    ...employeeAttendanceToday.map((record) => ({
+      id: record.id,
+      participantName: record.employee.employeeName,
+      participantCode: record.employee.employeeCode,
+      type: "employee" as const,
+      status: record.status,
+    })),
+  ];
   const todoTasks =
     tasksByStatus.find((item) => item.status === "TODO")?._count._all ?? 0;
   const inProgressTasks =
@@ -431,7 +442,7 @@ export default async function DashboardPage() {
     {
       label: "Attendance Today",
       value: todayAttendance.length,
-      detail: `${percent(todayAttendance.length, activeEmployees.length)} of active employees have a record today`,
+      detail: `${todayAttendance.length} attendance record(s) captured today across employees`,
       href: "/attendance",
       icon: CalendarCheck,
     },
@@ -557,12 +568,19 @@ export default async function DashboardPage() {
               {todayAttendance.map((record) => (
                 <div key={record.id} className="flex items-center justify-between gap-3 rounded-[1.4rem] border border-white/50 bg-white/45 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] backdrop-blur-sm">
                   <div>
-                    <p className="font-medium text-slate-950">{record.employee.employeeName}</p>
-                    <p className="text-sm text-slate-500">{record.employee.employeeCode}</p>
+                    <p className="font-medium text-slate-950">{record.participantName}</p>
+                    <p className="text-sm text-slate-500">{record.participantCode}</p>
                   </div>
-                  <span className="glass-chip rounded-full px-2.5 py-1 text-xs font-medium text-slate-700">
-                    {record.status.replaceAll("_", " ")}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="glass-chip rounded-full px-2.5 py-1 text-xs font-medium text-slate-700">
+                      {record.status.replaceAll("_", " ")}
+                    </span>
+                    <span
+                      className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700"
+                    >
+                      Employee
+                    </span>
+                  </div>
                 </div>
               ))}
               {!todayAttendance.length ? <EmptyState>No attendance records are marked for today.</EmptyState> : null}

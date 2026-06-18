@@ -530,24 +530,21 @@ export function EmployeeDocumentReviewSheet({
                 Submit Review
               </Button>
               {document.reviewStatus === "APPROVED" &&
-              !document.linkedTraineeId &&
               !document.linkedEmployeeId ? (
                 <Button asChild className="bg-cyan-600 hover:bg-cyan-700">
                   <Link
-                    href={`/trainees/create?applicantDocumentId=${document.id}`}
+                    href={`/employee-profiles/create?applicantDocumentId=${document.id}`}
                   >
                     <UserPlus className="mr-2 h-4 w-4" />
-                    Create Trainee
+                    Create Employee Profile
                   </Link>
                 </Button>
               ) : document.reviewStatus === "APPROVED" &&
-                (document.linkedTraineeId || document.linkedEmployeeId) ? (
+                document.linkedEmployeeId ? (
                 <div className="rounded-full bg-emerald-100 px-4 py-2 text-sm font-medium text-emerald-700">
-                  {document.linkedTraineeCode
-                    ? `Linked to ${document.linkedTraineeCode}`
-                    : document.linkedEmployeeCode
-                      ? `Linked to ${document.linkedEmployeeCode}`
-                      : "Converted"}
+                  {document.linkedEmployeeCode
+                    ? `Linked to ${document.linkedEmployeeCode}`
+                    : "Converted"}
                 </div>
               ) : null}
               <Button

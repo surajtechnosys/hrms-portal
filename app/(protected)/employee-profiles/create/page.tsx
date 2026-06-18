@@ -7,10 +7,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getApplicantDocumentById } from "@/lib/actions/employee-documents";
-import { getTraineeById } from "@/lib/actions/trainees";
 import { canAccess } from "@/lib/rbac";
 import { isCurrentEmployeeHr } from "@/lib/employee-job-role";
-import type { EmployeeDocument, Trainee } from "@/types";
+import type { EmployeeDocument } from "@/types";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft, UserPlus } from "lucide-react";
@@ -22,7 +21,6 @@ const EmployeeProfileCreatePage = async ({
     recruitmentId?: string | string[];
     applicantDocumentId?: string | string[];
     sourceApplicantDocumentId?: string | string[];
-    traineeId?: string | string[];
   }>;
 }) => {
   const route = "/employee-profiles";
@@ -47,11 +45,6 @@ const EmployeeProfileCreatePage = async ({
         : "";
   const initialApplicantDocument: EmployeeDocument | null =
     applicantDocumentId ? await getApplicantDocumentById(applicantDocumentId) : null;
-  const traineeId =
-    typeof params?.traineeId === "string" ? params.traineeId : "";
-  const initialTrainee: Trainee | null = traineeId
-    ? await getTraineeById(traineeId)
-    : null;
 
   return (
     <Card className="rounded-3xl border border-white/60 bg-white/80 shadow-xl backdrop-blur-md">
@@ -92,7 +85,6 @@ const EmployeeProfileCreatePage = async ({
           initialRecruitmentId={recruitmentId}
           initialApplicantDocumentId={applicantDocumentId}
           initialApplicantDocument={initialApplicantDocument}
-          initialTrainee={initialTrainee}
         />
       </CardContent>
     </Card>

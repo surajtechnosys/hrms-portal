@@ -84,3 +84,17 @@ export function isImagePreviewUrl(url: string) {
     normalized.includes(".heif")
   );
 }
+
+export function sanitizeStoredFileUrl(url?: string | null) {
+  const normalized = url?.trim() || "";
+
+  if (!normalized) {
+    return "";
+  }
+
+  if (/^data:[^;]+;base64,/i.test(normalized)) {
+    return "";
+  }
+
+  return normalized;
+}

@@ -61,42 +61,6 @@ async function findApplicantForLogin(identifier: string) {
   }
 }
 
-async function findTraineeForLogin(identifier: string) {
-  try {
-    const records = (await prisma.trainee.findMany({
-      select: {
-        traineeCode: true,
-        fullName: true,
-        email: true,
-        loginPassword: true,
-        status: true,
-      },
-    })) as Array<{
-      traineeCode?: string | null;
-      fullName?: string | null;
-      email?: string | null;
-      loginPassword?: string | null;
-      status?: string | null;
-    }>;
-
-    const normalizedIdentifier = identifier.toLowerCase();
-
-    return (
-      records.find((record) => {
-        return (
-          record.status === "ACTIVE" &&
-          !!record.loginPassword &&
-          [record.traineeCode, record.email]
-            .filter(Boolean)
-            .some((value) => value?.toLowerCase() === normalizedIdentifier)
-        );
-      }) ?? null
-    );
-  } catch {
-    return null;
-  }
-}
-
 export async function getUsers() {
   return await prisma.user.findMany({
     orderBy: {
@@ -307,18 +271,6 @@ export async function loginFormUser(prevState: unknown, formData: FormData) {
         existingApplicant.applicantPasswordHash,
       ));
 
-    const existingTrainee =
-      !userMatched && !employeeMatched && !employerMatched && !applicantMatched
-        ? await findTraineeForLogin(normalizedUser.username)
-        : null;
-
-    const traineeMatched =
-      !!existingTrainee?.loginPassword &&
-      (await bcrypt.compare(
-        normalizedUser.password,
-        existingTrainee.loginPassword,
-      ));
-
     await signIn("credentials", { ...normalizedUser, redirect: false });
 
     const redirectTo = userMatched && existingUser?.role?.name?.toLowerCase() === "employee"
@@ -329,9 +281,7 @@ export async function loginFormUser(prevState: unknown, formData: FormData) {
           ? "/dashboard"
           : applicantMatched
             ? "/applicant-dashboard/documents"
-            : traineeMatched
-              ? "/trainee-dashboard"
-              : "/dashboard";
+            : "/dashboard";
 
     return {
       success: true,

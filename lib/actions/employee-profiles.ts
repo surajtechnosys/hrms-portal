@@ -1,11 +1,10 @@
 "use server";
 
-import { Prisma, Status } from "@prisma/client";
+import { EmployeeType, Prisma, Status } from "@prisma/client";
 import { EmployeeProfile } from "@/types";
 import bcrypt from "bcrypt";
 import { revalidatePath } from "next/cache";
 import { attachApplicantDocumentToEmployeeProfile } from "./employee-documents";
-import { attachTraineeToEmployeeProfile } from "./trainees";
 import { prisma } from "../prisma";
 import { formatError } from "../utils";
 import { employeeProfileSchema } from "../validators";
@@ -19,6 +18,10 @@ const EXISTING_PASSWORD_SENTINEL = "__KEEP__";
 
 function toDate(value?: string | null) {
   return value ? new Date(value) : null;
+}
+
+function toIsoDate(value?: Date | null) {
+  return value?.toISOString().split("T")[0] ?? "";
 }
 
 function connectRelation(id?: string | null) {
@@ -104,8 +107,13 @@ function mapEmployeeProfile(record: EmployeeProfileRecord): EmployeeProfile {
     phone: record.phone,
     alternatePhone: record.alternatePhone ?? "",
     gender: record.gender ?? "",
-    dateOfBirth: record.dateOfBirth?.toISOString().split("T")[0] ?? "",
-    joiningDate: record.joiningDate.toISOString().split("T")[0],
+    dateOfBirth: toIsoDate(record.dateOfBirth),
+    joiningDate: toIsoDate(record.joiningDate),
+    employeeType: record.employeeType,
+    probationStartDate: toIsoDate(record.probationStartDate),
+    probationEndDate: toIsoDate(record.probationEndDate),
+    trainingStartDate: toIsoDate(record.trainingStartDate),
+    trainingEndDate: toIsoDate(record.trainingEndDate),
     departmentId: record.departmentId ?? "",
     jobRoleId: record.jobRoleId ?? "",
     workLocationId: record.workLocationId ?? "",
@@ -245,6 +253,7 @@ export interface EmployeeFilters {
   jobRoleId?: string;
   workLocationId?: string;
   status?: string;
+  employeeType?: string;
   joiningDateFrom?: string;
   joiningDateTo?: string;
   project?: string;
@@ -333,6 +342,13 @@ export async function getFilteredEmployeeProfiles(
     }
 
     if (
+      filters.employeeType &&
+      Object.values(EmployeeType).includes(filters.employeeType as EmployeeType)
+    ) {
+      where.employeeType = filters.employeeType as EmployeeType;
+    }
+
+    if (
       filters.status &&
       filters.status !== "ALL" &&
       Object.values(Status).includes(filters.status as Status)
@@ -397,6 +413,23 @@ export async function createEmployeeProfile(
           employeeCode,
           email,
           password: hashedPassword,
+          employeeType: record.employeeType,
+          probationStartDate:
+            record.employeeType === EmployeeType.PROBATIONER
+              ? toDate(record.probationStartDate)
+              : null,
+          probationEndDate:
+            record.employeeType === EmployeeType.PROBATIONER
+              ? toDate(record.probationEndDate)
+              : null,
+          trainingStartDate:
+            record.employeeType === EmployeeType.TRAINEE
+              ? toDate(record.trainingStartDate)
+              : null,
+          trainingEndDate:
+            record.employeeType === EmployeeType.TRAINEE
+              ? toDate(record.trainingEndDate)
+              : null,
           manager: record.managerId
             ? { connect: { id: record.managerId } }
             : undefined,
@@ -430,16 +463,6 @@ export async function createEmployeeProfile(
       if (record.sourceApplicantDocumentId) {
         await attachApplicantDocumentToEmployeeProfile({
           applicantDocumentId: record.sourceApplicantDocumentId,
-          employeeId: employee.id,
-          employeeCode: employee.employeeCode,
-          employeeName: employee.employeeName,
-          tx,
-        });
-      }
-
-      if (record.sourceTraineeId) {
-        await attachTraineeToEmployeeProfile({
-          traineeId: record.sourceTraineeId,
           employeeId: employee.id,
           employeeCode: employee.employeeCode,
           employeeName: employee.employeeName,
@@ -548,6 +571,23 @@ export async function updateEmployeeProfile(
           employeeCode: record.employeeCode || existingRecord.employeeCode,
           email,
           ...(hashedPassword ? { password: hashedPassword } : {}),
+          employeeType: record.employeeType,
+          probationStartDate:
+            record.employeeType === EmployeeType.PROBATIONER
+              ? toDate(record.probationStartDate)
+              : null,
+          probationEndDate:
+            record.employeeType === EmployeeType.PROBATIONER
+              ? toDate(record.probationEndDate)
+              : null,
+          trainingStartDate:
+            record.employeeType === EmployeeType.TRAINEE
+              ? toDate(record.trainingStartDate)
+              : null,
+          trainingEndDate:
+            record.employeeType === EmployeeType.TRAINEE
+              ? toDate(record.trainingEndDate)
+              : null,
           manager: connectRelation(record.managerId),
           company: connectRelation(record.companyId),
           department: connectRelation(record.departmentId),

@@ -2,6 +2,7 @@ import {
   ExperienceType,
   MovementType,
   Status,
+  EmployeeType,
   ProjectStatus,
   TaskStatus,
   Priority,
@@ -176,10 +177,6 @@ export const employeeDocumentSchema = z
     employeeId: z.string().optional(),
     employeeCode: z.string().optional(),
     employeeName: z.string().optional(),
-    traineeId: z.string().optional(),
-    linkedTraineeId: z.string().optional(),
-    linkedTraineeCode: z.string().optional(),
-    linkedTraineeName: z.string().optional(),
     linkedEmployeeId: z.string().optional(),
     linkedEmployeeCode: z.string().optional(),
     linkedEmployeeName: z.string().optional(),
@@ -462,7 +459,6 @@ export const employeeDocumentSchema = z
 export const employeeProfileSchema = z.object({
   id: z.string().optional(),
   sourceApplicantDocumentId: z.string().optional(),
-  sourceTraineeId: z.string().optional(),
   managerId: z.union([z.string().uuid(), z.literal("")]).optional(),
   employeeName: z.string().trim().min(1, "Employee name is required"),
   employeeCode: z.string().optional(),
@@ -477,6 +473,11 @@ export const employeeProfileSchema = z.object({
   gender: z.string().optional(),
   dateOfBirth: z.string().optional(),
   joiningDate: z.string().min(1, "Joining date is required"),
+  employeeType: z.nativeEnum(EmployeeType).default(EmployeeType.EMPLOYEE),
+  probationStartDate: z.string().optional(),
+  probationEndDate: z.string().optional(),
+  trainingStartDate: z.string().optional(),
+  trainingEndDate: z.string().optional(),
   departmentId: z.string().optional(),
   jobRoleId: z.string().optional(),
   workLocationId: z.string().optional(),
@@ -487,6 +488,60 @@ export const employeeProfileSchema = z.object({
   status: z.nativeEnum(Status),
   createdAt: z.string().nullable().optional(),
   updatedAt: z.string().nullable().optional(),
+}).superRefine((data, ctx) => {
+  const employeeType = data.employeeType ?? EmployeeType.EMPLOYEE;
+
+  const ensureRange = (
+    startDate: string | undefined,
+    endDate: string | undefined,
+    startPath: string,
+    endPath: string,
+    label: string,
+  ) => {
+    if (!startDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${label} start date is required`,
+        path: [startPath],
+      });
+    }
+
+    if (!endDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${label} end date is required`,
+        path: [endPath],
+      });
+    }
+
+    if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${label} end date must be after the start date`,
+        path: [endPath],
+      });
+    }
+  };
+
+  if (employeeType === EmployeeType.PROBATIONER) {
+    ensureRange(
+      data.probationStartDate,
+      data.probationEndDate,
+      "probationStartDate",
+      "probationEndDate",
+      "Probation",
+    );
+  }
+
+  if (employeeType === EmployeeType.TRAINEE) {
+    ensureRange(
+      data.trainingStartDate,
+      data.trainingEndDate,
+      "trainingStartDate",
+      "trainingEndDate",
+      "Training",
+    );
+  }
 });
 
 /* ---------------- USER ---------------- */
@@ -611,60 +666,6 @@ export const recruitmentSchema = z.object({
   joiningDetailsShared: z.enum(recruitmentTriStatuses).optional(),
   joiningDetailsSharedDate: z.string().optional(),
   remarks: z.string().optional(),
-  status: z.nativeEnum(Status),
-  createdAt: z.string().nullable().optional(),
-  updatedAt: z.string().nullable().optional(),
-});
-
-export const traineeSchema = z.object({
-  id: z.string().optional(),
-  applicantId: z.string().optional(),
-  applicantDocumentId: z.string().optional(),
-  sourceApplicantDocumentId: z.string().optional(),
-  traineeCode: z.string().optional(),
-  fullName: z.string().trim().min(1, "Trainee name is required"),
-  email: z.string().trim().min(1, "Email is required"),
-  mobileNumber: z.string().trim().min(1, "Mobile number is required"),
-  gender: z.string().optional(),
-  dateOfBirth: z.string().optional(),
-  address: z.string().optional(),
-  currentAddress: z.string().optional(),
-  permanentAddress: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  postalCode: z.string().optional(),
-  emergencyContactName: z.string().optional(),
-  emergencyContactPhone: z.string().optional(),
-  educationEntries: z.array(z.any()).optional(),
-  experienceEntries: z.array(z.any()).optional(),
-  uploadedDocumentUrls: z.array(z.string()).optional(),
-  onboardingPayload: z.any().optional(),
-  trainingBatch: z.string().optional(),
-  trainerName: z.string().optional(),
-  departmentId: z.string().optional(),
-  reportingManagerId: z.union([z.string().uuid(), z.literal("")]).optional(),
-  trainingStartDate: z.string().optional(),
-  trainingEndDate: z.string().optional(),
-  traineeStatus: z
-    .enum(["PENDING", "ACTIVE", "COMPLETED", "FAILED"])
-    .default("PENDING"),
-  trainingProgress: z.coerce.number().min(0).max(100).optional(),
-  attendancePercentage: z.coerce.number().min(0).max(100).optional(),
-  assessmentScore: z.coerce.number().optional(),
-  evaluationRecommendation: z
-    .union([z.enum(["RECOMMENDED", "NOT_RECOMMENDED"]), z.literal("")])
-    .optional(),
-  evaluationRemarks: z.string().optional(),
-  password: z.union([
-    z.string().min(6, "Password should be at least 6 characters long"),
-    z.literal(""),
-  ]),
-  employeeId: z.string().optional(),
-  employeeCode: z.string().optional(),
-  employeeName: z.string().optional(),
-  linkedEmployeeId: z.string().optional(),
-  linkedEmployeeCode: z.string().optional(),
-  linkedEmployeeName: z.string().optional(),
   status: z.nativeEnum(Status),
   createdAt: z.string().nullable().optional(),
   updatedAt: z.string().nullable().optional(),

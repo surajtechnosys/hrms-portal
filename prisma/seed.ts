@@ -73,11 +73,6 @@ async function main() {
       route: "/employee-documents",
     },
     {
-      name: "Trainee Management",
-      description: "Trainee Management Module",
-      route: "/trainees",
-    },
-    {
       name: "Transfer Promotion",
       description: "Transfer Promotion Module",
       route: "/transfer-promotion",

@@ -5,13 +5,16 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const year = searchParams.get("year");
     const month = searchParams.get("month");
-    const employeeId = searchParams.get("employeeId") || undefined;
+    const participantId =
+      searchParams.get("participantId") ||
+      searchParams.get("employeeId") ||
+      undefined;
     const departmentId = searchParams.get("departmentId") || undefined;
 
     const data = await getMonthlyAttendance({
       year: year ? Number(year) : undefined,
       month: month ? Number(month) : undefined,
-      employeeId,
+      participantId,
       departmentId,
     });
 

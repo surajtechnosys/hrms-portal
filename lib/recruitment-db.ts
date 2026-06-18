@@ -11,8 +11,12 @@ function emptyStringToNull(value?: string | null) {
   return normalized ? normalized : null;
 }
 
-function nullableDateToDate(value?: string | null) {
-  return value ? new Date(value) : null;
+function nullableDateToDate(value?: string | Date | null) {
+  if (!value) return null;
+
+  const date = value instanceof Date ? value : new Date(value);
+
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function dateToString(value?: Date | null) {
@@ -63,79 +67,176 @@ export function mapRecruitmentApplicationRecord(
 ): RecruitmentApplication {
   return {
     id: record.id,
+
     sourceInterviewApplicantId: record.sourceInterviewApplicantId ?? "",
+
     applicantPortalId: record.applicantPortalId ?? "",
     applicantUsername: record.applicantUsername ?? "",
     applicantPasswordHash: record.applicantPasswordHash ?? "",
+
     applicantPortalEnabled: record.applicantPortalEnabled,
+
     applicantInvitedAt: dateToString(record.applicantInvitedAt),
-    applicantDocumentsSubmittedAt: dateToString(record.applicantDocumentsSubmittedAt),
+
+    applicantDocumentsSubmittedAt: dateToString(
+      record.applicantDocumentsSubmittedAt,
+    ),
+
     serialNumber: record.serialNumber ?? "",
     requestId: record.requestId ?? "",
     clientProjectName: record.clientProjectName ?? "",
-    requestReceivedDate: record.requestReceivedDate ?? "",
+
+    requestReceivedDate: dateToString(
+      record.requestReceivedDate,
+    ),
+
     requestApprovedBy: record.requestApprovedBy ?? "",
-    hrOwnerEmployeeNumber: record.hrOwnerEmployeeNumber ?? "",
+
+    hrOwnerEmployeeNumber:
+      record.hrOwnerEmployeeNumber ?? "",
+
     hrOwnerName: record.hrOwnerName ?? "",
-    businessOwnerEmployeeNumber: record.businessOwnerEmployeeNumber ?? "",
-    businessOwnerName: record.businessOwnerName ?? "",
+
+    businessOwnerEmployeeNumber:
+      record.businessOwnerEmployeeNumber ?? "",
+
+    businessOwnerName:
+      record.businessOwnerName ?? "",
+
     candidateName: record.candidateName,
+
     gender: record.gender ?? "",
-    dateOfBirth: record.dateOfBirth ?? "",
+
+    dateOfBirth: dateToString(
+      record.dateOfBirth,
+    ),
+
     mobileNumber: record.mobileNumber,
+
     email: record.email ?? "",
+
     currentLocation: record.currentLocation ?? "",
-    preferredLocation: record.preferredLocation ?? "",
+
+    preferredLocation:
+      record.preferredLocation ?? "",
+
     noticePeriod: record.noticePeriod ?? "",
+
     qualification: record.qualification ?? "",
+
     skillsLevel: record.skillsLevel ?? "",
+
     profilePost: record.profilePost,
+
     certification: record.certification ?? "",
-    totalExperience: record.totalExperience ?? "",
-    relevantExperience: record.relevantExperience ?? "",
+
+    totalExperience:
+      record.totalExperience ?? "",
+
+    relevantExperience:
+      record.relevantExperience ?? "",
+
     currentCompany: record.currentCompany ?? "",
+
     currentCtc: record.currentCtc ?? "",
+
     expectedCtc: record.expectedCtc ?? "",
+
     offeredCtc: record.offeredCtc ?? "",
+
     profileSource:
-      (record.profileSource as RecruitmentApplication["profileSource"]) ?? undefined,
-    profileReceiveDate: record.profileReceiveDate ?? "",
-    internalScreeningDate: record.internalScreeningDate ?? "",
+      (record.profileSource as RecruitmentApplication["profileSource"]) ??
+      undefined,
+
+    profileReceiveDate: dateToString(
+      record.profileReceiveDate,
+    ),
+
+    internalScreeningDate:
+      record.internalScreeningDate ?? "",
+
     internalScreeningCleared:
       (record.internalScreeningCleared as RecruitmentApplication["internalScreeningCleared"]) ??
       undefined,
+
     profileSentToBusinessOwner:
       (record.profileSentToBusinessOwner as RecruitmentApplication["profileSentToBusinessOwner"]) ??
       undefined,
-    profileSentToBusinessOwnerDate: record.profileSentToBusinessOwnerDate ?? "",
-    profileConnectWithClientDate: record.profileConnectWithClientDate ?? "",
+
+    profileSentToBusinessOwnerDate: dateToString(
+      record.profileSentToBusinessOwnerDate,
+    ),
+
+    profileConnectWithClientDate: dateToString(
+      record.profileConnectWithClientDate,
+    ),
+
     interviewedByClient:
       (record.interviewedByClient as RecruitmentApplication["interviewedByClient"]) ??
       undefined,
-    clientInterviewDate: record.clientInterviewDate ?? "",
-    feedbackDate: record.feedbackDate ?? "",
+
+    clientInterviewDate: dateToString(
+      record.clientInterviewDate,
+    ),
+
+    feedbackDate: dateToString(
+      record.feedbackDate,
+    ),
+
     internalStatus:
-      (record.internalStatus as RecruitmentApplication["internalStatus"]) ?? undefined,
+      (record.internalStatus as RecruitmentApplication["internalStatus"]) ??
+      undefined,
+
     clientFinalStatus:
       (record.clientFinalStatus as RecruitmentApplication["clientFinalStatus"]) ??
       undefined,
+
     pipelineStatus:
-      (record.pipelineStatus as RecruitmentApplication["pipelineStatus"]) ?? undefined,
-    updatedToCandidateDate: record.updatedToCandidateDate ?? "",
-    offeredDate: record.offeredDate ?? "",
+      (record.pipelineStatus as RecruitmentApplication["pipelineStatus"]) ??
+      undefined,
+
+    updatedToCandidateDate: dateToString(
+      record.updatedToCandidateDate,
+    ),
+
+    offeredDate: dateToString(
+      record.offeredDate,
+    ),
+
     offerAccepted:
-      (record.offerAccepted as RecruitmentApplication["offerAccepted"]) ?? undefined,
-    reasonIfOfferNotAccepted: record.reasonIfOfferNotAccepted ?? "",
-    agreedJoiningDate: record.agreedJoiningDate ?? "",
-    joined: (record.joined as RecruitmentApplication["joined"]) ?? undefined,
-    reasonIfNotJoined: record.reasonIfNotJoined ?? "",
-    actualJoiningDate: record.actualJoiningDate ?? "",
+      (record.offerAccepted as RecruitmentApplication["offerAccepted"]) ??
+      undefined,
+
+    reasonIfOfferNotAccepted:
+      record.reasonIfOfferNotAccepted ?? "",
+
+    agreedJoiningDate: dateToString(
+      record.agreedJoiningDate,
+    ),
+
+    joined:
+      (record.joined as RecruitmentApplication["joined"]) ??
+      undefined,
+
+    reasonIfNotJoined:
+      record.reasonIfNotJoined ?? "",
+
+    actualJoiningDate: dateToString(
+      record.actualJoiningDate,
+    ),
+
     joiningDetailsShared:
       (record.joiningDetailsShared as RecruitmentApplication["joiningDetailsShared"]) ??
       undefined,
-    joiningDetailsSharedDate: record.joiningDetailsSharedDate ?? "",
+
+    joiningDetailsSharedDate: dateToString(
+      record.joiningDetailsSharedDate,
+    ),
+
     remarks: record.remarks ?? "",
+
     status: record.status,
+
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
   };
@@ -146,71 +247,183 @@ export function toRecruitmentApplicationDbInput(
 ): Prisma.RecruitmentApplicationUncheckedCreateInput {
   return {
     id: input.id,
+
     sourceInterviewApplicantId: emptyStringToNull(input.sourceInterviewApplicantId),
+
     applicantPortalId: emptyStringToNull(input.applicantPortalId),
     applicantUsername: emptyStringToNull(input.applicantUsername),
     applicantPasswordHash: emptyStringToNull(input.applicantPasswordHash),
+
     applicantPortalEnabled: input.applicantPortalEnabled ?? false,
+
     applicantInvitedAt: nullableDateToDate(input.applicantInvitedAt),
+
     applicantDocumentsSubmittedAt: nullableDateToDate(
       input.applicantDocumentsSubmittedAt,
     ),
+
     serialNumber: emptyStringToNull(input.serialNumber),
     requestId: emptyStringToNull(input.requestId),
     clientProjectName: emptyStringToNull(input.clientProjectName),
-    requestReceivedDate: emptyStringToNull(input.requestReceivedDate),
+
+    requestReceivedDate: nullableDateToDate(
+      input.requestReceivedDate,
+    ),
+
     requestApprovedBy: emptyStringToNull(input.requestApprovedBy),
-    hrOwnerEmployeeNumber: emptyStringToNull(input.hrOwnerEmployeeNumber),
+
+    hrOwnerEmployeeNumber: emptyStringToNull(
+      input.hrOwnerEmployeeNumber,
+    ),
+
     hrOwnerName: emptyStringToNull(input.hrOwnerName),
-    businessOwnerEmployeeNumber: emptyStringToNull(input.businessOwnerEmployeeNumber),
-    businessOwnerName: emptyStringToNull(input.businessOwnerName),
+
+    businessOwnerEmployeeNumber: emptyStringToNull(
+      input.businessOwnerEmployeeNumber,
+    ),
+
+    businessOwnerName: emptyStringToNull(
+      input.businessOwnerName,
+    ),
+
     candidateName: input.candidateName.trim(),
+
     gender: emptyStringToNull(input.gender),
-    dateOfBirth: emptyStringToNull(input.dateOfBirth),
+
+    dateOfBirth: nullableDateToDate(
+      input.dateOfBirth,
+    ),
+
     mobileNumber: input.mobileNumber.trim(),
+
     email: emptyStringToNull(input.email),
+
     currentLocation: emptyStringToNull(input.currentLocation),
-    preferredLocation: emptyStringToNull(input.preferredLocation),
+
+    preferredLocation: emptyStringToNull(
+      input.preferredLocation,
+    ),
+
     noticePeriod: emptyStringToNull(input.noticePeriod),
+
     qualification: emptyStringToNull(input.qualification),
+
     skillsLevel: emptyStringToNull(input.skillsLevel),
+
     profilePost: input.profilePost.trim(),
+
     certification: emptyStringToNull(input.certification),
+
     totalExperience: emptyStringToNull(input.totalExperience),
-    relevantExperience: emptyStringToNull(input.relevantExperience),
+
+    relevantExperience: emptyStringToNull(
+      input.relevantExperience,
+    ),
+
     currentCompany: emptyStringToNull(input.currentCompany),
+
     currentCtc: emptyStringToNull(input.currentCtc),
+
     expectedCtc: emptyStringToNull(input.expectedCtc),
+
     offeredCtc: emptyStringToNull(input.offeredCtc),
+
     profileSource: emptyStringToNull(input.profileSource),
-    profileReceiveDate: emptyStringToNull(input.profileReceiveDate),
-    internalScreeningDate: emptyStringToNull(input.internalScreeningDate),
-    internalScreeningCleared: emptyStringToNull(input.internalScreeningCleared),
-    profileSentToBusinessOwner: emptyStringToNull(input.profileSentToBusinessOwner),
-    profileSentToBusinessOwnerDate: emptyStringToNull(
+
+    profileReceiveDate: nullableDateToDate(
+      input.profileReceiveDate,
+    ),
+
+    internalScreeningDate: emptyStringToNull(
+      input.internalScreeningDate,
+    ),
+
+    internalScreeningCleared: emptyStringToNull(
+      input.internalScreeningCleared,
+    ),
+
+    profileSentToBusinessOwner: emptyStringToNull(
+      input.profileSentToBusinessOwner,
+    ),
+
+    profileSentToBusinessOwnerDate: nullableDateToDate(
       input.profileSentToBusinessOwnerDate,
     ),
-    profileConnectWithClientDate: emptyStringToNull(input.profileConnectWithClientDate),
-    interviewedByClient: emptyStringToNull(input.interviewedByClient),
-    clientInterviewDate: emptyStringToNull(input.clientInterviewDate),
-    feedbackDate: emptyStringToNull(input.feedbackDate),
+
+    profileConnectWithClientDate: nullableDateToDate(
+      input.profileConnectWithClientDate,
+    ),
+
+    interviewedByClient: emptyStringToNull(
+      input.interviewedByClient,
+    ),
+
+    clientInterviewDate: nullableDateToDate(
+      input.clientInterviewDate,
+    ),
+
+    feedbackDate: nullableDateToDate(
+      input.feedbackDate,
+    ),
+
     internalStatus: emptyStringToNull(input.internalStatus),
-    clientFinalStatus: emptyStringToNull(input.clientFinalStatus),
-    pipelineStatus: emptyStringToNull(input.pipelineStatus) || "APPLIED",
-    updatedToCandidateDate: emptyStringToNull(input.updatedToCandidateDate),
-    offeredDate: emptyStringToNull(input.offeredDate),
-    offerAccepted: emptyStringToNull(input.offerAccepted),
-    reasonIfOfferNotAccepted: emptyStringToNull(input.reasonIfOfferNotAccepted),
-    agreedJoiningDate: emptyStringToNull(input.agreedJoiningDate),
+
+    clientFinalStatus: emptyStringToNull(
+      input.clientFinalStatus,
+    ),
+
+    pipelineStatus:
+      emptyStringToNull(input.pipelineStatus) || "APPLIED",
+
+    updatedToCandidateDate: nullableDateToDate(
+      input.updatedToCandidateDate,
+    ),
+
+    offeredDate: nullableDateToDate(
+      input.offeredDate,
+    ),
+
+    offerAccepted: emptyStringToNull(
+      input.offerAccepted,
+    ),
+
+    reasonIfOfferNotAccepted: emptyStringToNull(
+      input.reasonIfOfferNotAccepted,
+    ),
+
+    agreedJoiningDate: nullableDateToDate(
+      input.agreedJoiningDate,
+    ),
+
     joined: emptyStringToNull(input.joined),
-    reasonIfNotJoined: emptyStringToNull(input.reasonIfNotJoined),
-    actualJoiningDate: emptyStringToNull(input.actualJoiningDate),
-    joiningDetailsShared: emptyStringToNull(input.joiningDetailsShared),
-    joiningDetailsSharedDate: emptyStringToNull(input.joiningDetailsSharedDate),
+
+    reasonIfNotJoined: emptyStringToNull(
+      input.reasonIfNotJoined,
+    ),
+
+    actualJoiningDate: nullableDateToDate(
+      input.actualJoiningDate,
+    ),
+
+    joiningDetailsShared: emptyStringToNull(
+      input.joiningDetailsShared,
+    ),
+
+    joiningDetailsSharedDate: nullableDateToDate(
+      input.joiningDetailsSharedDate,
+    ),
+
     remarks: emptyStringToNull(input.remarks),
+
     status: input.status || Status.ACTIVE,
-    createdAt: input.createdAt ? new Date(input.createdAt) : undefined,
-    updatedAt: input.updatedAt ? new Date(input.updatedAt) : undefined,
+
+    createdAt: input.createdAt
+      ? new Date(input.createdAt)
+      : undefined,
+
+    updatedAt: input.updatedAt
+      ? new Date(input.updatedAt)
+      : undefined,
   };
 }
 

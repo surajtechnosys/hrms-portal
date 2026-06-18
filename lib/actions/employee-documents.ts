@@ -12,6 +12,7 @@ import {
   markApplicantDocumentsSubmitted,
 } from "./recruitment";
 import { isHrJobRoleName } from "../employee-job-role";
+import { sanitizeStoredFileUrl } from "../document-uploads";
 import {
   DOCUMENT_VERIFICATION_STATUSES,
   type DocumentVerificationStatus,
@@ -58,10 +59,6 @@ type ApplicantDocumentOption = {
   emergencyContactName: string;
   emergencyContactPhone: string;
   reviewStatus: string;
-  traineeId: string;
-  linkedTraineeId: string;
-  linkedTraineeCode: string;
-  linkedTraineeName: string;
   linkedEmployeeId: string;
 };
 
@@ -397,9 +394,34 @@ type PrismaApplicantDocumentRecord = Prisma.ApplicantDocumentGetPayload<{
 }>;
 
 function getDocumentPayload(record: PrismaApplicantDocumentRecord) {
-  const payload = (record.documentPayload ?? {}) as Partial<EmployeeDocument>;
-  console.log("RESTORED DOCUMENT PAYLOAD KEYS", Object.keys(payload));
-  return payload;
+  return sanitizeDocumentPayload(
+    (record.documentPayload ?? {}) as Partial<EmployeeDocument>,
+  );
+}
+
+function sanitizeDocumentPayload<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((entry) => sanitizeDocumentPayload(entry)) as T;
+  }
+
+  if (value && typeof value === "object") {
+    const next: Record<string, unknown> = {};
+
+    for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+      if (typeof entry === "string") {
+        const shouldSanitize =
+          /url$/i.test(key) || /fileurl$/i.test(key) || key === "url";
+        next[key] = shouldSanitize ? sanitizeStoredFileUrl(entry) : entry;
+        continue;
+      }
+
+      next[key] = sanitizeDocumentPayload(entry);
+    }
+
+    return next as T;
+  }
+
+  return value;
 }
 
 function mapPrismaEmployeeDocument(
@@ -440,10 +462,6 @@ function mapPrismaEmployeeDocument(
     linkedEmployeeId: payload.linkedEmployeeId ?? "",
     linkedEmployeeCode: payload.linkedEmployeeCode ?? "",
     linkedEmployeeName: payload.linkedEmployeeName ?? "",
-    traineeId: payload.traineeId ?? "",
-    linkedTraineeId: payload.linkedTraineeId ?? "",
-    linkedTraineeCode: payload.linkedTraineeCode ?? "",
-    linkedTraineeName: payload.linkedTraineeName ?? "",
     aadhaarNumber: payload.aadhaarNumber ?? record.aadhaarNumber ?? "",
     aadhaarFileUrl: payload.aadhaarFileUrl ?? record.aadhaarFileUrl ?? "",
     panNumber: payload.panNumber ?? record.panNumber ?? "",
@@ -483,10 +501,6 @@ function mapApplicantDocument(record: EmployeeDocument): EmployeeDocument {
     linkedEmployeeId: record.linkedEmployeeId ?? "",
     linkedEmployeeCode: record.linkedEmployeeCode ?? "",
     linkedEmployeeName: record.linkedEmployeeName ?? "",
-    traineeId: record.traineeId ?? "",
-    linkedTraineeId: record.linkedTraineeId ?? "",
-    linkedTraineeCode: record.linkedTraineeCode ?? "",
-    linkedTraineeName: record.linkedTraineeName ?? "",
     aadhaarNumber: record.aadhaarNumber ?? "",
     aadhaarFileUrl: record.aadhaarFileUrl ?? "",
     panNumber: record.panNumber ?? "",
@@ -510,7 +524,7 @@ function normalizeApplicantDocument(input: EmployeeDocument): EmployeeDocument {
   const ownerName = applicantName;
   const ownerCode = input.applicantCode?.trim() || "";
 
-  return {
+  return sanitizeDocumentPayload({
     ...input,
     id: input.id ?? crypto.randomUUID(),
     documentOwnerType: "APPLICANT",
@@ -523,10 +537,6 @@ function normalizeApplicantDocument(input: EmployeeDocument): EmployeeDocument {
     linkedEmployeeId: input.linkedEmployeeId?.trim() || "",
     linkedEmployeeCode: input.linkedEmployeeCode?.trim() || "",
     linkedEmployeeName: input.linkedEmployeeName?.trim() || "",
-    traineeId: input.traineeId?.trim() || "",
-    linkedTraineeId: input.linkedTraineeId?.trim() || "",
-    linkedTraineeCode: input.linkedTraineeCode?.trim() || "",
-    linkedTraineeName: input.linkedTraineeName?.trim() || "",
     aadhaarNumber: input.aadhaarNumber.trim(),
     aadhaarFileUrl: input.aadhaarFileUrl || "",
     panNumber: input.panNumber.trim(),
@@ -545,7 +555,7 @@ function normalizeApplicantDocument(input: EmployeeDocument): EmployeeDocument {
     applicantName,
     ownerName,
     ownerCode,
-  };
+  });
 }
 
 async function getApplicantEmailForReview(record: EmployeeDocument) {
@@ -726,10 +736,6 @@ async function getApplicantDocumentOptionsBase(): Promise<
         emergencyContactPhone: record.emergencyContactNumber ?? "",
         emergencyContactNumber: record.emergencyContactNumber ?? "",
         reviewStatus: record.reviewStatus ?? "PENDING",
-        traineeId: record.traineeId ?? "",
-        linkedTraineeId: record.linkedTraineeId ?? "",
-        linkedTraineeCode: record.linkedTraineeCode ?? "",
-        linkedTraineeName: record.linkedTraineeName ?? "",
         linkedEmployeeId: record.linkedEmployeeId ?? "",
         currentAddress: record.currentAddress ?? "",
         permanentAddress: record.permanentAddress ?? "",
@@ -738,7 +744,7 @@ async function getApplicantDocumentOptionsBase(): Promise<
         postalCode: record.postalCode ?? "",
       };
     })
-    .filter((record) => !record.linkedEmployeeId && !record.linkedTraineeId)
+    .filter((record) => !record.linkedEmployeeId)
     .sort((a, b) => a.candidateName.localeCompare(b.candidateName));
 }
 
@@ -818,7 +824,6 @@ export async function attachApplicantDocumentToEmployeeProfile(params: {
       data: {
         employeeId: params.employeeId,
         employeeCode: params.employeeCode,
-        traineeId: applicantDocument.traineeId || null,
         aadhaarNumber: applicantDocument.aadhaarNumber,
         aadhaarFileUrl: applicantDocument.aadhaarFileUrl || null,
         panNumber: applicantDocument.panNumber,
@@ -851,7 +856,6 @@ export async function attachApplicantDocumentToEmployeeProfile(params: {
         linkedEmployeeId: params.employeeId,
         linkedEmployeeCode: params.employeeCode,
         linkedEmployeeName: params.employeeName,
-        traineeId: applicantDocument.traineeId || "",
       }) as Prisma.InputJsonValue,
     },
   });

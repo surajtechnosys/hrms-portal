@@ -11,6 +11,12 @@ enum Status {
   INACTIVE
 }
 
+enum EmployeeType {
+  EMPLOYEE
+  PROBATIONER
+  TRAINEE
+}
+
 enum MovementType {
   TRANSFER
   PROMOTION
@@ -200,7 +206,6 @@ model ApplicantDocument {
   applicantId       String?
   candidateName     String?
   employeeId        String?                   @db.Uuid
-  traineeId         String?                   @db.Uuid
   employeeCode      String
 
   // ---------------- DOCUMENTS ----------------
@@ -411,6 +416,11 @@ model EmployeeProfile {
   gender         String?
   dateOfBirth    DateTime?
   joiningDate    DateTime
+  employeeType   EmployeeType @default(EMPLOYEE)
+  probationStartDate DateTime?
+  probationEndDate   DateTime?
+  trainingStartDate  DateTime?
+  trainingEndDate    DateTime?
 
   departmentId   String? @db.Uuid
   jobRoleId      String? @db.Uuid
@@ -444,152 +454,12 @@ model EmployeeProfile {
   reviewedEodReports       EodReport[]         @relation("EodReviewedByManager")
   monthlyEodReviews        MonthlyEodReview[]
   managedMonthlyEodReviews MonthlyEodReview[]  @relation("MonthlyEodReviewedByManager")
-  sourceTraineeId          String?             @unique @db.Uuid
 
   @@index([managerId])
+  @@index([employeeType])
+  @@index([probationEndDate])
+  @@index([trainingEndDate])
   @@index([resetTokenHash])
-}
-
-model Trainee {
-  id                       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  traineeCode              String    @unique
-  applicantId              String?   @db.Uuid
-  applicantDocumentId      String?   @unique @db.Uuid
-  fullName                 String
-  email                    String    @unique
-  mobileNumber             String
-  gender                   String?
-  dateOfBirth              DateTime?
-  address                  String?
-  currentAddress           String?
-  permanentAddress         String?
-  city                     String?
-  state                    String?
-  postalCode               String?
-  emergencyContactName     String?
-  emergencyContactPhone    String?
-  educationEntries         Json?
-  experienceEntries        Json?
-  uploadedDocumentUrls     Json?
-  onboardingPayload        Json?
-  trainingBatch            String?
-  trainerName              String?
-  departmentId             String?   @db.Uuid
-  reportingManagerId       String?   @db.Uuid
-  trainingStartDate        DateTime?
-  trainingEndDate          DateTime?
-  traineeStatus            String    @default("PENDING")
-  trainingProgress         Int       @default(0)
-  attendancePercentage     Float?
-  assessmentScore          Float?
-  evaluationRecommendation String?
-  evaluationRemarks        String?
-  loginPassword            String?
-  employeeId               String?   @unique @db.Uuid
-  employeeCode             String?
-  employeeName             String?
-  convertedAt              DateTime?
-  status                   Status    @default(ACTIVE)
-  createdAt                DateTime  @default(now())
-  updatedAt                DateTime  @updatedAt
-
-  attendances       TraineeAttendance[]
-  tasks             TraineeTask[]
-  assessments       TraineeAssessment[]
-  evaluations       TraineeEvaluation[]
-  trainingMaterials TraineeTrainingMaterial[]
-
-  @@index([applicantId])
-  @@index([applicantDocumentId])
-  @@index([employeeId])
-  @@index([reportingManagerId])
-}
-
-model TraineeAttendance {
-  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  traineeId    String    @db.Uuid
-  date         DateTime  @db.Date
-  checkIn      DateTime?
-  checkOut     DateTime?
-  workingHours Float?
-  status       String    @default("ABSENT")
-  isLate       Boolean   @default(false)
-  isHalfDay    Boolean   @default(false)
-  remarks      String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  trainee Trainee @relation(fields: [traineeId], references: [id], onDelete: Cascade)
-
-  @@unique([traineeId, date])
-  @@index([traineeId])
-}
-
-model TraineeTask {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  traineeId     String    @db.Uuid
-  title         String
-  description   String?
-  dueDate       DateTime?
-  priority      String    @default("MEDIUM")
-  status        String    @default("TODO")
-  remarks       String?
-  submissionUrl String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  trainee Trainee @relation(fields: [traineeId], references: [id], onDelete: Cascade)
-
-  @@index([traineeId])
-}
-
-model TraineeAssessment {
-  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  traineeId      String   @db.Uuid
-  assessmentName String
-  score          Float
-  maxScore       Float
-  remarks        String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  trainee Trainee @relation(fields: [traineeId], references: [id], onDelete: Cascade)
-
-  @@index([traineeId])
-}
-
-model TraineeEvaluation {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  traineeId       String   @db.Uuid
-  technicalSkills Int
-  communication   Int
-  learningAbility Int
-  discipline      Int
-  teamwork        Int
-  problemSolving  Int
-  trainerRemarks  String?
-  recommendation  String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  trainee Trainee @relation(fields: [traineeId], references: [id], onDelete: Cascade)
-
-  @@index([traineeId])
-}
-
-model TraineeTrainingMaterial {
-  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  traineeId    String?  @db.Uuid
-  title        String
-  description  String?
-  materialType String
-  url          String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  trainee Trainee? @relation(fields: [traineeId], references: [id], onDelete: SetNull)
-
-  @@index([traineeId])
 }
 
 model Module {

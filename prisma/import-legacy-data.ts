@@ -260,7 +260,7 @@ function toDocumentReviewStatus(status?: string) {
 
 function toApplicantDocumentDbInput(
   input: EmployeeDocument,
-): Prisma.EmployeeDocumentUncheckedCreateInput {
+): Prisma.ApplicantDocumentUncheckedCreateInput {
   const normalized = normalizeApplicantDocument(input);
 
   return {
@@ -380,7 +380,7 @@ async function importApplicantDocuments() {
   for (const record of records) {
     const payload = toApplicantDocumentDbInput(record);
 
-    await prisma.employeeDocument.upsert({
+    await prisma.applicantDocument.upsert({
       where: { id: record.id ?? "" },
       update: {
         documentOwnerType: payload.documentOwnerType,
@@ -418,7 +418,7 @@ async function logSummary() {
     prisma.recruitmentIntake.count(),
     prisma.recruitmentApplication.count(),
     prisma.interviewRecord.count(),
-    prisma.employeeDocument.count({
+    prisma.applicantDocument.count({
       where: { documentOwnerType: "APPLICANT" },
     }),
   ]);

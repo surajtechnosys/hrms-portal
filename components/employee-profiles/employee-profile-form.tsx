@@ -1,6 +1,6 @@
 "use client";
 
-import { Status } from "@prisma/client";
+import { EmployeeType, Status } from "@prisma/client";
 import {
   createEmployeeProfile,
   getEmployeeProfileOptions,
@@ -10,12 +10,12 @@ import {
 import { getApplicantDocumentOptionsForEmployeeCreation } from "@/lib/actions/employee-documents";
 import { getRecruitmentApplicationById } from "@/lib/actions/recruitment";
 import { employeeProfileDefaultValues } from "@/lib/constants";
+import { EMPLOYEE_TYPE_OPTIONS } from "@/lib/employee-employment";
 import { employeeProfileSchema } from "@/lib/validators";
 import {
   EmployeeDocument,
   EmployeeProfile,
   RecruitmentApplication,
-  Trainee,
 } from "@/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, FileCheck2, Loader2 } from "lucide-react";
@@ -50,7 +50,6 @@ type Props = {
   initialRecruitmentId?: string;
   initialApplicantDocumentId?: string;
   initialApplicantDocument?: EmployeeDocument | null;
-  initialTrainee?: Trainee | null;
 };
 
 type Option = {
@@ -110,28 +109,6 @@ type ApplicantDocumentPrefillSource = {
   emergencyContactNumber?: string | null;
 };
 
-type TraineePrefillSource = {
-  id: string;
-  traineeCode?: string | null;
-  applicantId?: string | null;
-  fullName?: string | null;
-  email?: string | null;
-  mobileNumber?: string | null;
-  gender?: string | null;
-  dateOfBirth?: string | null;
-  address?: string | null;
-  currentAddress?: string | null;
-  permanentAddress?: string | null;
-  city?: string | null;
-  state?: string | null;
-  postalCode?: string | null;
-  emergencyContactName?: string | null;
-  emergencyContactPhone?: string | null;
-  educationEntries?: unknown[];
-  experienceEntries?: unknown[];
-  uploadedDocumentUrls?: string[];
-};
-
 const NONE_VALUE = "none";
 const EXISTING_PASSWORD_SENTINEL = "__KEEP__";
 const PASSWORD_MASK = "********";
@@ -185,20 +162,6 @@ function buildApplicantDocumentPrefill(
   };
 }
 
-function buildTraineePrefill(document: TraineePrefillSource) {
-  return {
-    sourceTraineeId: document.id,
-    employeeName: document.fullName || "",
-    email: document.email || "",
-    phone: document.mobileNumber || "",
-    gender: document.gender || "",
-    dateOfBirth: document.dateOfBirth || "",
-    address: buildApplicantDocumentAddress(document),
-    emergencyContactName: document.emergencyContactName || "",
-    emergencyContactPhone: document.emergencyContactPhone || "",
-  };
-}
-
 function toApplicantDocumentPrefillSource(
   document: ApplicantDocumentOption | EmployeeDocument,
 ): ApplicantDocumentPrefillSource {
@@ -235,7 +198,6 @@ const EmployeeProfileForm = ({
   initialRecruitmentId,
   initialApplicantDocumentId,
   initialApplicantDocument,
-  initialTrainee,
 }: Props) => {
   const router = useRouter();
   const id = data?.id;
@@ -267,6 +229,29 @@ const EmployeeProfileForm = ({
       null,
     [applicantDocuments, selectedApplicantDocumentId],
   );
+  const watchedEmployeeType = useWatch({
+    control: form.control,
+    name: "employeeType",
+  });
+
+  useEffect(() => {
+    if (watchedEmployeeType === EmployeeType.PROBATIONER) {
+      form.setValue("trainingStartDate", "");
+      form.setValue("trainingEndDate", "");
+      return;
+    }
+
+    if (watchedEmployeeType === EmployeeType.TRAINEE) {
+      form.setValue("probationStartDate", "");
+      form.setValue("probationEndDate", "");
+      return;
+    }
+
+    form.setValue("probationStartDate", "");
+    form.setValue("probationEndDate", "");
+    form.setValue("trainingStartDate", "");
+    form.setValue("trainingEndDate", "");
+  }, [form, watchedEmployeeType]);
 
   const applyApplicantDocumentValues = React.useCallback(
     (document: ApplicantDocumentOption | EmployeeDocument) => {
@@ -298,39 +283,6 @@ const EmployeeProfileForm = ({
       form.reset(data);
     }
   }, [data, form]);
-
-  useEffect(() => {
-    if (update || !initialTrainee) {
-      return;
-    }
-
-    const prefill = buildTraineePrefill({
-      id: initialTrainee.id ?? "",
-      fullName: initialTrainee.fullName,
-      email: initialTrainee.email,
-      mobileNumber: initialTrainee.mobileNumber,
-      gender: initialTrainee.gender,
-      dateOfBirth: initialTrainee.dateOfBirth,
-      address: initialTrainee.address,
-      currentAddress: initialTrainee.currentAddress,
-      permanentAddress: initialTrainee.permanentAddress,
-      city: initialTrainee.city,
-      state: initialTrainee.state,
-      postalCode: initialTrainee.postalCode,
-      emergencyContactName: initialTrainee.emergencyContactName,
-      emergencyContactPhone: initialTrainee.emergencyContactPhone,
-    });
-
-    form.setValue("sourceTraineeId", prefill.sourceTraineeId);
-    form.setValue("employeeName", prefill.employeeName);
-    form.setValue("email", prefill.email);
-    form.setValue("phone", prefill.phone);
-    form.setValue("gender", prefill.gender);
-    form.setValue("dateOfBirth", prefill.dateOfBirth);
-    form.setValue("address", prefill.address);
-    form.setValue("emergencyContactName", prefill.emergencyContactName);
-    form.setValue("emergencyContactPhone", prefill.emergencyContactPhone);
-  }, [form, initialTrainee, update]);
 
   useEffect(() => {
     if (update || !initialApplicantDocument) {
@@ -519,6 +471,37 @@ const EmployeeProfileForm = ({
         <div className="grid gap-5 md:grid-cols-2">
           <FormField
             control={form.control}
+            name="employeeType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Employee Type</FormLabel>
+
+                <Select
+                  value={field.value}
+                  onValueChange={field.onChange}
+                >
+                  <FormControl>
+                    <SelectTrigger className={fieldClass}>
+                      <SelectValue placeholder="Select employee type" />
+                    </SelectTrigger>
+                  </FormControl>
+
+                  <SelectContent className="rounded-2xl border border-indigo-100">
+                    {EMPLOYEE_TYPE_OPTIONS.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
             name="employeeName"
             render={({ field }) => (
               <FormItem>
@@ -684,6 +667,62 @@ const EmployeeProfileForm = ({
               </FormItem>
             )}
           />
+
+          {watchedEmployeeType === EmployeeType.PROBATIONER && (
+            <>
+              <FormField
+                control={form.control}
+                name="probationStartDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Probation Start Date</FormLabel>
+                    <Input type="date" className={fieldClass} {...field} />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="probationEndDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Probation End Date</FormLabel>
+                    <Input type="date" className={fieldClass} {...field} />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </>
+          )}
+
+          {watchedEmployeeType === EmployeeType.TRAINEE && (
+            <>
+              <FormField
+                control={form.control}
+                name="trainingStartDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Training Start Date</FormLabel>
+                    <Input type="date" className={fieldClass} {...field} />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="trainingEndDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Training End Date</FormLabel>
+                    <Input type="date" className={fieldClass} {...field} />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </>
+          )}
 
           {/* Company */}
           <FormField
