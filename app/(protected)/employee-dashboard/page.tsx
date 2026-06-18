@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { Badge } from "@/components/ui/badge";
 import { getAttendanceDashboard } from "@/lib/actions/attendance";
 import { getLeaveDashboard } from "@/lib/actions/leave-requests";
 import { getEmployeeProfiles } from "@/lib/actions/employee-profiles";
@@ -11,6 +12,13 @@ import {
   isCurrentEmployeeHr,
   isCurrentEmployeeManager,
 } from "@/lib/employee-job-role";
+import {
+  buildEmploymentReminderMessages,
+  formatRemainingDays,
+  getEmployeeTypeLabel,
+  getEmployeeTypeTone,
+  getEmploymentTrackingState,
+} from "@/lib/employee-employment";
 import { prisma } from "@/lib/prisma";
 import {
   ArrowRightLeft,
@@ -564,11 +572,26 @@ export default async function EmployeeDashboardPage({
     const approvedApplicantDocuments = documents.filter(
       (document) =>
         document.reviewStatus === "APPROVED" &&
-        !document.linkedEmployeeId &&
-        !document.linkedTraineeId,
+        !document.linkedEmployeeId,
     );
     const pendingLeaveRequests = leaveRequests.filter(
       (request) => request.status === "PENDING",
+    );
+    const trackedEmployees = employeeProfiles
+      .map((profile) => ({
+        profile,
+        tracking: getEmploymentTrackingState(profile),
+      }))
+      .filter(({ tracking }) => tracking.isTracked && tracking.isActive);
+    const probationTrackedEmployees = trackedEmployees.filter(
+      ({ tracking }) => tracking.kind === "PROBATION",
+    );
+    const traineeTrackedEmployees = trackedEmployees.filter(
+      ({ tracking }) => tracking.kind === "TRAINING",
+    );
+    const hrEmploymentNotifications = buildEmploymentReminderMessages(
+      trackedEmployees.map(({ profile }) => profile),
+      "HR",
     );
 
     return (
@@ -583,6 +606,11 @@ export default async function EmployeeDashboardPage({
                 <h1 className="mt-3 text-3xl font-semibold text-slate-900">
                   {employeeProfile.employeeName}
                 </h1>
+                <Badge
+                  className={`mt-4 rounded-full px-3 py-1 text-xs font-semibold ring-1 ${getEmployeeTypeTone(employeeProfile.employeeType)}`}
+                >
+                  {getEmployeeTypeLabel(employeeProfile.employeeType)}
+                </Badge>
                 <p className="mt-3 max-w-xl text-sm text-slate-600">
                   Review employee records, approve leave and document uploads,
                   and keep the team moving from one place.
@@ -670,6 +698,150 @@ export default async function EmployeeDashboardPage({
           </section>
 
           <section className="rounded-lg border bg-white p-6 shadow-sm">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Employment Tracking
+                </h2>
+                <p className="text-sm text-slate-500">
+                  Active probation and training records with the next review reminders.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+              {[
+                {
+                  label: "Total Employees",
+                  value: employeeProfiles.length,
+                },
+                {
+                  label: "Total Probationers",
+                  value: probationTrackedEmployees.length,
+                },
+                {
+                  label: "Total Trainees",
+                  value: traineeTrackedEmployees.length,
+                },
+                {
+                  label: "Probation Ending Soon",
+                  value: probationTrackedEmployees.filter(
+                    ({ tracking }) => tracking.isEndingSoon,
+                  ).length,
+                },
+                {
+                  label: "Training Ending Soon",
+                  value: traineeTrackedEmployees.filter(
+                    ({ tracking }) => tracking.isEndingSoon,
+                  ).length,
+                },
+              ].map((item) => (
+                <div key={item.label} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm text-slate-500">{item.label}</p>
+                  <p className="mt-2 text-2xl font-semibold text-slate-900">
+                    {item.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-base font-semibold text-slate-900">
+                    Active Period Records
+                  </h3>
+                  <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-medium text-cyan-700">
+                    HR view
+                  </span>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {trackedEmployees.length ? (
+                    trackedEmployees.map(({ profile, tracking }) => (
+                      <div
+                        key={profile.id}
+                        className={`rounded-2xl border p-4 ${
+                          tracking.isEndingSoon
+                            ? "border-amber-200 bg-amber-50"
+                            : "border-slate-200 bg-slate-50"
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="font-medium text-slate-900">
+                              {profile.employeeName}
+                            </p>
+                            <p className="text-sm text-slate-500">
+                              {profile.employeeCode} · {tracking.periodLabel}
+                            </p>
+                          </div>
+                          <Badge
+                            className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ${getEmployeeTypeTone(profile.employeeType)}`}
+                          >
+                            {getEmployeeTypeLabel(profile.employeeType)}
+                          </Badge>
+                        </div>
+                        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+                          <span>{tracking.periodLabel} ends in {formatRemainingDays(tracking.remainingDays)}</span>
+                          <Link
+                            href={`/employee-profiles/${profile.employeeCode}`}
+                            className="font-medium text-cyan-700 hover:underline"
+                          >
+                            Open profile
+                          </Link>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">
+                      No active probation or training records found.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-base font-semibold text-slate-900">
+                    Reminder Notifications
+                  </h3>
+                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                    15 / 7 / 3 / 1 / 0 days
+                  </span>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {hrEmploymentNotifications.length ? (
+                    hrEmploymentNotifications.map((item) => (
+                      <div
+                        key={`${item.employeeId}-${item.audience}-${item.remainingDays}`}
+                        className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <p className="font-medium text-slate-900">
+                            {item.employeeName}
+                          </p>
+                          <Badge
+                            className="rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-cyan-700 ring-1 ring-cyan-100"
+                          >
+                            {item.audience}
+                          </Badge>
+                        </div>
+                        <p className="mt-2 text-sm text-slate-600">{item.message}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">
+                      No reminder notifications are due today.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-lg border bg-white p-6 shadow-sm">
             <div className="mb-5 flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">
@@ -714,11 +886,11 @@ export default async function EmployeeDashboardPage({
                   </div>
 
                   <Link
-                    href={`/trainees/create?applicantDocumentId=${document.id}`}
+                    href={`/employee-profiles/create?applicantDocumentId=${document.id}`}
                     className="mt-4 inline-flex h-10 items-center justify-center rounded-lg bg-cyan-600 px-4 text-sm font-medium text-white transition hover:bg-cyan-700"
                   >
                     <Plus className="mr-2 h-4 w-4" />
-                    Create Trainee
+                    Create Employee Profile
                   </Link>
                 </div>
               ))}
@@ -941,9 +1113,186 @@ export default async function EmployeeDashboardPage({
       );
     }
 
+    const directReports = await prisma.employeeProfile.findMany({
+      where: {
+        managerId: employeeProfile.id,
+      },
+      orderBy: [{ employeeName: "asc" }, { employeeCode: "asc" }],
+    });
+    const trackedDirectReports = directReports
+      .map((profile) => ({
+        profile,
+        tracking: getEmploymentTrackingState(profile),
+      }))
+      .filter(({ tracking }) => tracking.isTracked && tracking.isActive);
+    const managerEmploymentNotifications = buildEmploymentReminderMessages(
+      trackedDirectReports.map(({ profile }) => profile),
+      "MANAGER",
+    );
+
     return (
       <div className="min-h-screen bg-slate-50 p-3 md:p-5">
         <div className="w-full space-y-6">
+          <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm uppercase text-cyan-700">
+                  Manager Dashboard
+                </p>
+                <h1 className="mt-2 text-3xl font-semibold text-slate-900">
+                  {employeeProfile.employeeName}
+                </h1>
+                <p className="mt-3 max-w-xl text-sm text-slate-600">
+                  Team members on probation and in training, plus the reminder queue for upcoming end dates.
+                </p>
+              </div>
+              <Badge
+                className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ${getEmployeeTypeTone(employeeProfile.employeeType)}`}
+              >
+                {getEmployeeTypeLabel(employeeProfile.employeeType)}
+              </Badge>
+            </div>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {[
+                {
+                  label: "Team Members on Probation",
+                  value: trackedDirectReports.filter(
+                    ({ tracking }) => tracking.kind === "PROBATION",
+                  ).length,
+                },
+                {
+                  label: "Team Members in Training",
+                  value: trackedDirectReports.filter(
+                    ({ tracking }) => tracking.kind === "TRAINING",
+                  ).length,
+                },
+                {
+                  label: "Probation Ending Soon",
+                  value: trackedDirectReports.filter(
+                    ({ tracking }) =>
+                      tracking.kind === "PROBATION" && tracking.isEndingSoon,
+                  ).length,
+                },
+                {
+                  label: "Training Ending Soon",
+                  value: trackedDirectReports.filter(
+                    ({ tracking }) =>
+                      tracking.kind === "TRAINING" && tracking.isEndingSoon,
+                  ).length,
+                },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  className="rounded-lg border border-slate-200 bg-slate-50 p-4"
+                >
+                  <p className="text-sm text-slate-500">{item.label}</p>
+                  <p className="mt-2 text-2xl font-semibold text-slate-900">
+                    {item.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-base font-semibold text-slate-900">
+                    Direct Reports
+                  </h2>
+                  <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-medium text-cyan-700">
+                    Manager only
+                  </span>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {trackedDirectReports.length ? (
+                    trackedDirectReports.map(({ profile, tracking }) => (
+                      <div
+                        key={profile.id}
+                        className={`rounded-2xl border p-4 ${
+                          tracking.isEndingSoon
+                            ? "border-amber-200 bg-amber-50"
+                            : "border-slate-200 bg-slate-50"
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="font-medium text-slate-900">
+                              {profile.employeeName}
+                            </p>
+                            <p className="text-sm text-slate-500">
+                              {profile.employeeCode} · {tracking.periodLabel}
+                            </p>
+                          </div>
+                          <Badge
+                            className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ${getEmployeeTypeTone(profile.employeeType)}`}
+                          >
+                            {getEmployeeTypeLabel(profile.employeeType)}
+                          </Badge>
+                        </div>
+                        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+                          <span>
+                            {tracking.periodLabel} ends in{" "}
+                            {formatRemainingDays(tracking.remainingDays)}
+                          </span>
+                          <Link
+                            href={`/employee-profiles/${profile.employeeCode}`}
+                            className="font-medium text-cyan-700 hover:underline"
+                          >
+                            Open profile
+                          </Link>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">
+                      No direct reports are currently on probation or in training.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-base font-semibold text-slate-900">
+                    Reminder Notifications
+                  </h2>
+                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                    15 / 7 / 3 / 1 / 0 days
+                  </span>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {managerEmploymentNotifications.length ? (
+                    managerEmploymentNotifications.map((item) => (
+                      <div
+                        key={`${item.employeeId}-${item.audience}-${item.remainingDays}`}
+                        className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <p className="font-medium text-slate-900">
+                            {item.employeeName}
+                          </p>
+                          <Badge className="rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-cyan-700 ring-1 ring-cyan-100">
+                            {item.audience}
+                          </Badge>
+                        </div>
+                        <p className="mt-2 text-sm text-slate-600">
+                          {item.message}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">
+                      No reminder notifications are due today.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+
           <section className="overflow-hidden rounded-lg border border-slate-200 bg-gradient-to-r from-sky-50 via-white to-cyan-50 shadow-sm">
             <div className="grid gap-6 p-6 lg:grid-cols-[1.1fr_0.9fr] lg:p-8">
               <div>
@@ -954,7 +1303,7 @@ export default async function EmployeeDashboardPage({
                   {employeeProfile.employeeName}
                 </h1>
                 <p className="mt-3 max-w-xl text-sm text-slate-600">
-                  This employee dashboard is focused only on interview assignments. HR schedules interviews, and managers or interviewers respond from their assigned queue.
+                  Interview assignments remain below, while the team tracking summary above keeps probation and training reminders visible.
                 </p>
 
                 <div className="mt-6 flex flex-wrap gap-3">
@@ -1140,6 +1489,11 @@ export default async function EmployeeDashboardPage({
                 <div className="rounded-full border border-slate-200 bg-white px-4 py-2">
                   {employeeProfile.jobRole?.name || "Role not assigned"}
                 </div>
+                <Badge
+                  className={`rounded-full px-4 py-2 text-sm font-semibold ring-1 ${getEmployeeTypeTone(employeeProfile.employeeType)}`}
+                >
+                  {getEmployeeTypeLabel(employeeProfile.employeeType)}
+                </Badge>
                 <div className="rounded-full border border-slate-200 bg-white px-4 py-2">
                   Joined {formatDate(employeeProfile.joiningDate)}
                 </div>
@@ -1215,6 +1569,12 @@ export default async function EmployeeDashboardPage({
                 <p className="text-sm text-slate-500">Job Role</p>
                 <p className="mt-1 font-medium text-slate-900">
                   {employeeProfile.jobRole?.name || "Not assigned"}
+                </p>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">Employee Type</p>
+                <p className="mt-1 font-medium text-slate-900">
+                  {getEmployeeTypeLabel(employeeProfile.employeeType)}
                 </p>
               </div>
               <div className="rounded-lg bg-slate-50 p-4">

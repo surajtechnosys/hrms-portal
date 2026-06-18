@@ -35,7 +35,6 @@ export default async function MyAttendancePage() {
     id: employee.id,
     name: employee.employeeName,
     code: employee.employeeCode,
-    type: "employee" as const,
   }));
   const participantId =
     dashboard.currentParticipantId || participants.at(0)?.id || "";
@@ -108,7 +107,6 @@ export default async function MyAttendancePage() {
       <AttendanceSheet
         initialSheet={sheet}
         employees={options.employees}
-        trainees={options.trainees}
         departments={options.departments}
         canFilterEmployees={false}
         title="My Monthly Records"

@@ -32,22 +32,12 @@ export default async function MarkAttendancePage() {
       id: employee.id,
       name: employee.employeeName,
       code: employee.employeeCode,
-      type: "employee" as const,
-    })),
-    ...options.trainees.map((trainee) => ({
-      id: trainee.id,
-      name: trainee.fullName,
-      code: trainee.traineeCode,
-      type: "trainee" as const,
     })),
   ];
   const participantId =
     dashboard.currentParticipantId || participants[0]?.id || "";
-  const selectedParticipant = participants.find((participant) => participant.id === participantId);
   const todayRecord = dashboard.todayRecords.find(
-    (record) =>
-      record.participantId === participantId &&
-      (!selectedParticipant || record.type === selectedParticipant.type),
+    (record) => record.participantId === participantId,
   );
 
   return (
@@ -62,8 +52,8 @@ export default async function MarkAttendancePage() {
               Mark Attendance
             </h1>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              Record check-in and check-out for employees or trainees from the
-              shared attendance hub.
+              Record check-in and check-out for employees from the shared
+              attendance hub.
             </p>
           </div>
         </div>

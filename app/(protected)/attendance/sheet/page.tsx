@@ -41,7 +41,7 @@ export default async function AttendanceSheetPage() {
               Attendance Sheet
             </h1>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              Monthly attendance in a payroll-friendly grid for employees and trainees.
+              Monthly attendance in a payroll-friendly grid for employees.
             </p>
           </div>
         </div>
@@ -49,7 +49,6 @@ export default async function AttendanceSheetPage() {
       <AttendanceSheet
         initialSheet={sheet}
         employees={options.employees}
-        trainees={options.trainees}
         departments={options.departments}
         canFilterEmployees={canFilterEmployees}
       />

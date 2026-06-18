@@ -10,17 +10,12 @@ export async function GET(request: Request) {
       searchParams.get("employeeId") ||
       undefined;
     const departmentId = searchParams.get("departmentId") || undefined;
-    const type = searchParams.get("type");
 
     const data = await getMonthlyAttendance({
       year: year ? Number(year) : undefined,
       month: month ? Number(month) : undefined,
       participantId,
       departmentId,
-      type:
-        type === "employees" || type === "trainees" || type === "all"
-          ? type
-          : undefined,
     });
 
     return Response.json({ success: true, data });

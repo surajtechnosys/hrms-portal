@@ -45,14 +45,6 @@ export default async function AttendancePage() {
       name: employee.employeeName,
       code: employee.employeeCode,
       departmentId: employee.departmentId,
-      type: "employee" as const,
-    })),
-    ...options.trainees.map((trainee) => ({
-      id: trainee.id,
-      name: trainee.fullName,
-      code: trainee.traineeCode,
-      departmentId: trainee.departmentId,
-      type: "trainee" as const,
     })),
   ];
 
@@ -97,8 +89,7 @@ export default async function AttendancePage() {
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
               Track daily attendance, review the current day, and move into the
-              monthly grid or export reports without leaving the module. Trainees
-              now live in the same attendance ecosystem as employees.
+              monthly grid or export reports without leaving the module.
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
               {actionLinks.map((item) => (

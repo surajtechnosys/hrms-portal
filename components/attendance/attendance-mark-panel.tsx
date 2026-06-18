@@ -1,5 +1,6 @@
 "use client";
 
+/* eslint-disable react-hooks/set-state-in-effect */
 import * as React from "react";
 import { Clock, LogIn, LogOut, NotebookPen } from "lucide-react";
 import { toast } from "sonner";
@@ -18,7 +19,6 @@ type Participant = {
   id: string;
   name: string;
   code: string;
-  type: "employee" | "trainee";
 };
 
 type AttendanceMarkPanelProps = {
@@ -46,24 +46,24 @@ export function AttendanceMarkPanel({
   canCreate,
   canChooseParticipant = false,
 }: AttendanceMarkPanelProps) {
-  const [selectedParticipant, setSelectedParticipant] = React.useState<Participant | undefined>(
-    participants.find(p => p.id === participantId)
-  );
+  const [selectedParticipant, setSelectedParticipant] = React.useState<
+    Participant | undefined
+  >(participants.find((p) => p.id === participantId));
   const [record, setRecord] = React.useState(todayRecord);
   const [remarks, setRemarks] = React.useState(todayRecord?.remarks ?? "");
   const [isPending, startTransition] = React.useTransition();
 
   React.useEffect(() => {
-    setSelectedParticipant(participants.find((participant) => participant.id === participantId));
+    setSelectedParticipant(
+      participants.find((participant) => participant.id === participantId),
+    );
   }, [participantId, participants]);
 
   React.useEffect(() => {
     const resolvedRecord = selectedParticipant
       ? todayRecords.length
         ? todayRecords.find(
-            (item) =>
-              item.participantId === selectedParticipant.id &&
-              item.type === selectedParticipant.type,
+            (item) => item.participantId === selectedParticipant.id,
           )
         : todayRecord
       : todayRecord;
@@ -83,7 +83,6 @@ export function AttendanceMarkPanel({
         },
         body: JSON.stringify({
           participantId: selectedParticipant.id,
-          type: selectedParticipant.type,
           remarks,
         }),
       });
@@ -149,21 +148,23 @@ export function AttendanceMarkPanel({
         {canChooseParticipant && (
           <div className="space-y-2">
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-              Select Participant
+              Select Employee
             </p>
             <select
               value={selectedParticipant?.id ?? ""}
               onChange={(event) => {
-                const selected = participants.find((participant) => participant.id === event.target.value);
+                const selected = participants.find(
+                  (participant) => participant.id === event.target.value,
+                );
                 setSelectedParticipant(selected);
               }}
               className="h-11 w-full rounded-lg border border-slate-200 px-3 text-sm"
               disabled={isPending}
             >
-              <option value="">Select a participant</option>
+              <option value="">Select an employee</option>
               {participants.map((participant) => (
-                <option key={`${participant.type}-${participant.id}`} value={participant.id}>
-                  {participant.name} ({participant.code}) - {participant.type === "trainee" ? "Trainee" : "Employee"}
+                <option key={participant.id} value={participant.id}>
+                  {participant.name} ({participant.code}) - Employee
                 </option>
               ))}
             </select>
@@ -186,7 +187,8 @@ export function AttendanceMarkPanel({
 
         {!selectedParticipant && (
           <p className="text-sm text-rose-600">
-            Your user is not linked to an employee or trainee profile. Please link a profile before checking in.
+            Your user is not linked to an employee profile. Please link a
+            profile before checking in.
           </p>
         )}
 

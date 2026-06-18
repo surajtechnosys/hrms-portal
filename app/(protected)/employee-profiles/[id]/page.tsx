@@ -12,6 +12,12 @@ import { prisma } from "@/lib/prisma";
 import { getRoutePermissions } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
 import {
+  formatRemainingDays,
+  getEmployeeTypeLabel,
+  getEmployeeTypeTone,
+  getEmploymentTrackingState,
+} from "@/lib/employee-employment";
+import {
   ArrowLeft,
   BadgeCheck,
   BriefcaseBusiness,
@@ -187,6 +193,7 @@ export default async function EmployeeProfileDetailPage({
     employeeProfile.status === "ACTIVE"
       ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
       : "bg-rose-50 text-rose-700 ring-rose-200";
+  const employmentTracking = getEmploymentTrackingState(employeeProfile);
 
   return (
     <div className="space-y-6">
@@ -224,6 +231,14 @@ export default async function EmployeeProfileDetailPage({
                   >
                     {employeeProfile.status}
                   </Badge>
+                  <Badge
+                    className={cn(
+                      "rounded-full px-3 py-1 text-xs font-semibold ring-1",
+                      getEmployeeTypeTone(employeeProfile.employeeType),
+                    )}
+                  >
+                    {getEmployeeTypeLabel(employeeProfile.employeeType)}
+                  </Badge>
                 </div>
                 <p className="mt-2 text-base font-medium text-slate-600">
                   {employeeProfile.jobRole?.name || "Role not assigned"} in{" "}
@@ -250,6 +265,12 @@ export default async function EmployeeProfileDetailPage({
               <span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm">
                 Location: {employeeProfile.workLocation?.name || "Not assigned"}
               </span>
+              {employmentTracking.isTracked && (
+                <span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm">
+                  {employmentTracking.periodLabel} ends in{" "}
+                  {formatRemainingDays(employmentTracking.remainingDays)}
+                </span>
+              )}
             </div>
           </div>
 
@@ -382,6 +403,30 @@ export default async function EmployeeProfileDetailPage({
                 value={formatDate(employeeProfile.joiningDate)}
                 icon={CalendarDays}
               />
+              <InfoTile
+                label="Employee Type"
+                value={getEmployeeTypeLabel(employeeProfile.employeeType)}
+                icon={BadgeCheck}
+              />
+              {employmentTracking.isTracked && (
+                <>
+                  <InfoTile
+                    label={`${employmentTracking.periodLabel} Start`}
+                    value={formatDate(employmentTracking.startDate)}
+                    icon={CalendarDays}
+                  />
+                  <InfoTile
+                    label={`${employmentTracking.periodLabel} End`}
+                    value={formatDate(employmentTracking.endDate)}
+                    icon={CalendarDays}
+                  />
+                  <InfoTile
+                    label="Remaining Days"
+                    value={formatRemainingDays(employmentTracking.remainingDays)}
+                    icon={CalendarDays}
+                  />
+                </>
+              )}
               <InfoTile
                 label="Company"
                 value={employeeProfile.company?.companyName || "-"}

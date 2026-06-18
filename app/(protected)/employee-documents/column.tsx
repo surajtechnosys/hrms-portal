@@ -157,7 +157,6 @@ export const getEmployeeDocumentColumns = ({
       size: 270,
       cell: ({ row }) => {
         const id = row.original.id as string;
-        const linkedTraineeCode = row.original.linkedTraineeCode?.trim();
 
         return (
           <div className="flex flex-nowrap items-center gap-2">
@@ -187,23 +186,18 @@ export const getEmployeeDocumentColumns = ({
             )}
 
             {row.original.reviewStatus === "APPROVED" &&
-            row.original.linkedTraineeId ? (
+            row.original.linkedEmployeeId ? (
               <Badge className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-700">
-                {linkedTraineeCode
-                  ? `Linked to ${linkedTraineeCode}`
-                  : "Trainee Created"}
-              </Badge>
-            ) : row.original.reviewStatus === "APPROVED" &&
-              row.original.linkedEmployeeId ? (
-              <Badge className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-700">
-                Employee Created
+                {row.original.linkedEmployeeCode?.trim()
+                  ? `Linked to ${row.original.linkedEmployeeCode.trim()}`
+                  : "Employee Created"}
               </Badge>
             ) : row.original.reviewStatus === "APPROVED" ? (
               <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
                 <Link
                   href={`/employee-profiles/create?applicantDocumentId=${id}`}
                 >
-                  Create Employee
+                  Create Employee Profile
                 </Link>
               </Button>
             ) : null}

@@ -83,23 +83,6 @@ function hasRecruitmentStorageModels(client: PrismaClient) {
   )
 }
 
-function hasTraineeModels(client: PrismaClient) {
-  const models = (client as PrismaClient & {
-    _runtimeDataModel?: {
-      models?: Record<string, unknown>
-    }
-  })._runtimeDataModel?.models
-
-  return Boolean(
-    models?.Trainee &&
-      models?.TraineeAttendance &&
-      models?.TraineeTask &&
-      models?.TraineeAssessment &&
-      models?.TraineeEvaluation &&
-      models?.TraineeTrainingMaterial,
-  )
-}
-
 export const prisma = (() => {
   const cached = globalForPrisma.prisma
 
@@ -107,8 +90,7 @@ export const prisma = (() => {
     cached &&
     hasApplicantDocumentReviewFields(cached) &&
     hasEodReportingFields(cached) &&
-    hasRecruitmentStorageModels(cached) &&
-    hasTraineeModels(cached)
+    hasRecruitmentStorageModels(cached)
   ) {
     return cached
   }

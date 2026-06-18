@@ -332,7 +332,6 @@ export default async function DashboardPage() {
     leaveRequests,
     documents,
     employeeAttendanceToday,
-    traineeAttendanceToday,
     transfers,
   ] = await Promise.all([
     prisma.employeeProfile.findMany({
@@ -388,14 +387,6 @@ export default async function DashboardPage() {
         employee: { select: { employeeName: true, employeeCode: true } },
       },
     }),
-    prisma.traineeAttendance.findMany({
-      where: { date: today },
-      orderBy: { createdAt: "desc" },
-      take: 6,
-      include: {
-        trainee: { select: { fullName: true, traineeCode: true } },
-      },
-    }),
     prisma.transferPromotion.findMany({
       orderBy: { effectiveDate: "desc" },
       take: 5,
@@ -413,13 +404,6 @@ export default async function DashboardPage() {
       participantName: record.employee.employeeName,
       participantCode: record.employee.employeeCode,
       type: "employee" as const,
-      status: record.status,
-    })),
-    ...traineeAttendanceToday.map((record) => ({
-      id: record.id,
-      participantName: record.trainee.fullName,
-      participantCode: record.trainee.traineeCode,
-      type: "trainee" as const,
       status: record.status,
     })),
   ];
@@ -458,7 +442,7 @@ export default async function DashboardPage() {
     {
       label: "Attendance Today",
       value: todayAttendance.length,
-      detail: `${todayAttendance.length} attendance record(s) captured today across employees and trainees`,
+      detail: `${todayAttendance.length} attendance record(s) captured today across employees`,
       href: "/attendance",
       icon: CalendarCheck,
     },
@@ -592,13 +576,9 @@ export default async function DashboardPage() {
                       {record.status.replaceAll("_", " ")}
                     </span>
                     <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                        record.type === "trainee"
-                          ? "bg-cyan-100 text-cyan-700"
-                          : "bg-slate-100 text-slate-700"
-                      }`}
+                      className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700"
                     >
-                      {record.type === "trainee" ? "Trainee" : "Employee"}
+                      Employee
                     </span>
                   </div>
                 </div>

@@ -41,7 +41,7 @@ export default async function AttendanceReportPage() {
               Attendance Report
             </h1>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              Filter attendance data for employees and trainees, then export the current view as CSV.
+              Filter attendance data for employees, then export the current view as CSV.
             </p>
           </div>
         </div>
@@ -49,7 +49,6 @@ export default async function AttendanceReportPage() {
       <AttendanceSheet
         initialSheet={sheet}
         employees={options.employees}
-        trainees={options.trainees}
         departments={options.departments}
         canFilterEmployees={canFilterEmployees}
         showExport

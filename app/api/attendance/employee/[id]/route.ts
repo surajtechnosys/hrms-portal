@@ -6,12 +6,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const { searchParams } = new URL(_request.url);
-    const type = searchParams.get("type");
-    const data = await getEmployeeAttendanceRecords(
-      id,
-      type === "trainee" ? "trainee" : "employee",
-    );
+    const data = await getEmployeeAttendanceRecords(id);
 
     return Response.json({ success: true, data });
   } catch (error) {

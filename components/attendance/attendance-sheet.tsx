@@ -16,10 +16,8 @@ type Participant = {
   employeeName?: string;
   code?: string;
   employeeCode?: string;
-  traineeCode?: string;
   departmentId?: string | null;
   departmentName?: string | null;
-  type?: "employee" | "trainee";
 };
 
 type Option = {
@@ -30,7 +28,6 @@ type Option = {
 type AttendanceSheetProps = {
   initialSheet: AttendanceMonthSheet;
   employees?: Participant[];
-  trainees?: Participant[];
   departments: Option[];
   canFilterEmployees: boolean;
   showExport?: boolean;
@@ -67,19 +64,14 @@ const statusTextClasses: Record<string, string> = {
 
 function formatParticipantLabel(participant: Participant) {
   const name = participant.employeeName || participant.fullName || participant.name || "";
-  const code = participant.employeeCode || participant.traineeCode || participant.code || "";
-  return {
-    name,
-    code,
-    typeLabel: participant.type === "trainee" ? "Trainee" : "Employee",
-  };
+  const code = participant.employeeCode || participant.code || "";
+  return { name, code };
 }
 
 function exportCsv(sheet: AttendanceMonthSheet) {
   const dayHeaders = Array.from({ length: sheet.daysInMonth }, (_, index) => `${index + 1}`);
   const rows = [
     [
-      "Type",
       "Participant Code",
       "Participant Name",
       "Department",
@@ -91,7 +83,6 @@ function exportCsv(sheet: AttendanceMonthSheet) {
       "Holidays",
     ],
     ...sheet.rows.map((row) => [
-      row.type === "trainee" ? "Trainee" : "Employee",
       row.participantCode,
       row.participantName,
       row.departmentName,
@@ -120,7 +111,6 @@ function exportCsv(sheet: AttendanceMonthSheet) {
 export function AttendanceSheet({
   initialSheet,
   employees = [],
-  trainees = [],
   departments,
   canFilterEmployees,
   showExport = false,
@@ -130,18 +120,9 @@ export function AttendanceSheet({
   const [sheet, setSheet] = React.useState(initialSheet);
   const [year, setYear] = React.useState(String(initialSheet.year));
   const [month, setMonth] = React.useState(String(initialSheet.month));
-  const [participantType, setParticipantType] = React.useState<
-    "employees" | "trainees" | "all"
-  >("all");
   const [participantKey, setParticipantKey] = React.useState("all");
   const [departmentId, setDepartmentId] = React.useState("all");
   const [isPending, startTransition] = React.useTransition();
-
-  React.useEffect(() => {
-    setSheet(initialSheet);
-    setYear(String(initialSheet.year));
-    setMonth(String(initialSheet.month));
-  }, [initialSheet]);
 
   const days = React.useMemo(
     () => Array.from({ length: sheet.daysInMonth }, (_, index) => index + 1),
@@ -164,64 +145,23 @@ export function AttendanceSheet({
   ];
 
   const filteredParticipants = React.useMemo(() => {
-    const pool = [
-      ...employees.map((employee) => ({
-        ...employee,
-        type: "employee" as const,
-      })),
-      ...trainees.map((trainee) => ({
-        ...trainee,
-        type: "trainee" as const,
-      })),
-    ];
-
-    return pool.filter((participant) => {
-      if (participantType === "employees" && participant.type !== "employee") {
-        return false;
-      }
-      if (participantType === "trainees" && participant.type !== "trainee") {
-        return false;
-      }
-      if (
-        departmentId !== "all" &&
-        (participant.departmentId ?? null) !== departmentId
-      ) {
+    return employees.filter((participant) => {
+      if (departmentId !== "all" && (participant.departmentId ?? null) !== departmentId) {
         return false;
       }
       return true;
     });
-  }, [departmentId, employees, participantType, trainees]);
-
-  const selectedParticipant = React.useMemo(() => {
-    if (participantKey === "all") {
-      return null;
-    }
-
-    const [type, id] = participantKey.split(":");
-    return filteredParticipants.find(
-      (participant) => participant.id === id && participant.type === type,
-    );
-  }, [filteredParticipants, participantKey]);
+  }, [departmentId, employees]);
 
   const applyFilters = () => {
     startTransition(async () => {
-      const selectedType =
-        participantKey === "all" && participantType !== "all"
-          ? participantType
-          : participantKey === "all"
-            ? "all"
-            : selectedParticipant?.type === "trainee"
-              ? "trainees"
-              : "employees";
-
       const params = new URLSearchParams({
         year,
         month,
-        type: selectedType,
       });
 
       if (participantKey !== "all") {
-        params.set("participantId", participantKey.split(":")[1]);
+        params.set("participantId", participantKey);
       }
 
       if (departmentId !== "all") {
@@ -240,13 +180,6 @@ export function AttendanceSheet({
     });
   };
 
-  const participantLabel =
-    participantKey === "all"
-      ? "All participants"
-      : selectedParticipant
-        ? `${formatParticipantLabel(selectedParticipant).name} (${formatParticipantLabel(selectedParticipant).code})`
-        : "Selected participant";
-
   return (
     <Card className="rounded-lg border-slate-200 bg-white shadow-sm">
       <CardHeader className="border-b border-slate-100">
@@ -257,7 +190,7 @@ export function AttendanceSheet({
               {title}
             </CardTitle>
             <p className="mt-1 text-sm text-slate-500">
-              {sheet.rows.length} participant record(s) loaded for {sheet.month}/{sheet.year}
+              {sheet.rows.length} employee record(s) loaded for {sheet.month}/{sheet.year}
             </p>
           </div>
 
@@ -286,19 +219,6 @@ export function AttendanceSheet({
             {canFilterEmployees ? (
               <>
                 <select
-                  value={participantType}
-                  onChange={(event) => {
-                    setParticipantType(event.target.value as "employees" | "trainees" | "all");
-                    setParticipantKey("all");
-                  }}
-                  className="h-10 rounded-lg border border-slate-200 px-3 text-sm"
-                >
-                  <option value="all">All participants</option>
-                  <option value="employees">Employees only</option>
-                  <option value="trainees">Trainees only</option>
-                </select>
-
-                <select
                   value={departmentId}
                   onChange={(event) => {
                     setDepartmentId(event.target.value);
@@ -319,12 +239,12 @@ export function AttendanceSheet({
                   onChange={(event) => setParticipantKey(event.target.value)}
                   className="h-10 rounded-lg border border-slate-200 px-3 text-sm"
                 >
-                  <option value="all">All participants</option>
+                  <option value="all">All employees</option>
                   {filteredParticipants.map((participant) => {
                     const meta = formatParticipantLabel(participant);
                     return (
-                      <option key={`${participant.type}:${participant.id}`} value={`${participant.type}:${participant.id}`}>
-                        {meta.name} ({meta.code}) - {meta.typeLabel}
+                      <option key={participant.id} value={participant.id}>
+                        {meta.name} ({meta.code}) - Employee
                       </option>
                     );
                   })}
@@ -453,7 +373,7 @@ export function AttendanceSheet({
               <thead className="bg-slate-50 text-slate-600">
                 <tr>
                   <th className="sticky left-0 z-10 bg-slate-50 px-3 py-3 text-left">
-                    Participant
+                    Employee
                   </th>
                   {days.map((day) => (
                     <th key={day} className="px-2 py-3 text-center">
@@ -467,18 +387,12 @@ export function AttendanceSheet({
               </thead>
               <tbody>
                 {sheet.rows.map((row) => (
-                  <tr key={`${row.type}-${row.participantId}`} className="border-t border-slate-100">
+                  <tr key={row.participantId} className="border-t border-slate-100">
                     <td className="sticky left-0 z-10 bg-white px-3 py-3">
                       <div className="font-medium text-slate-900">
                         {row.participantName}
-                        <span
-                          className={`ml-2 inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
-                            row.type === "trainee"
-                              ? "bg-cyan-100 text-cyan-700"
-                              : "bg-slate-100 text-slate-600"
-                          }`}
-                        >
-                          {row.type === "trainee" ? "Trainee" : "Employee"}
+                        <span className="ml-2 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
+                          Employee
                         </span>
                       </div>
                       <div className="text-xs text-slate-500">
