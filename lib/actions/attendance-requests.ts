@@ -79,7 +79,9 @@ type AttendanceRequestRawRow = {
   updatedAt: Date | string;
 };
 
-function mapAttendanceRequestRaw(row: AttendanceRequestRawRow): AttendanceRequestRecord {
+function mapAttendanceRequestRaw(
+  row: AttendanceRequestRawRow,
+): AttendanceRequestRecord {
   return {
     id: row.id,
     employeeId: row.employeeId,
@@ -87,7 +89,9 @@ function mapAttendanceRequestRaw(row: AttendanceRequestRawRow): AttendanceReques
     employeeCode: row.employeeCode,
     departmentName: row.departmentName ?? "-",
     attendanceDate: toDateInput(
-      row.attendanceDate ? new Date(row.attendanceDate) : toDateOnly(row.createdAt),
+      row.attendanceDate
+        ? new Date(row.attendanceDate)
+        : toDateOnly(row.createdAt),
     ),
     requestType: row.requestType,
     reason: row.reason,
@@ -310,7 +314,10 @@ export async function createAttendanceRequest(input: {
       throw new Error("Employee profile not found for current user");
     }
 
-    if (!input.requestType || !Object.values(AttendanceRequestType).includes(input.requestType)) {
+    if (
+      !input.requestType ||
+      !Object.values(AttendanceRequestType).includes(input.requestType)
+    ) {
       throw new Error("Attendance type is required");
     }
 
@@ -344,39 +351,49 @@ export async function createAttendanceRequest(input: {
       : null;
 
     const [request] = await prisma.$queryRaw<AttendanceRequestRawRow[]>`
-      WITH inserted AS (
-        INSERT INTO "AttendanceRequest" (
-          "employeeId",
-          "attendanceId",
-          "requestType",
-          "reason",
-          "notes"
-        )
-        VALUES (${employeeId}, ${attendance?.id ?? null}, ${input.requestType}, ${reason}, ${notes})
-        RETURNING *
-      )
-      SELECT
-        ar."id",
-        ar."employeeId",
-        ep."employeeName",
-        ep."employeeCode",
-        d."name" AS "departmentName",
-        COALESCE(a."date", ar."createdAt") AS "attendanceDate",
-        ar."requestType",
-        ar."reason",
-        ar."notes",
-        ar."status",
-        TRIM(COALESCE(u."firstName", '') || ' ' || COALESCE(u."lastName", '')) AS "approvedByName",
-        ar."approvedAt",
-        ar."rejectionReason",
-        ar."createdAt",
-        ar."updatedAt"
-      FROM inserted ar
-      JOIN "EmployeeProfile" ep ON ep."id" = ar."employeeId"
-      LEFT JOIN "Department" d ON d."id" = ep."departmentId"
-      LEFT JOIN "Attendance" a ON a."id" = ar."attendanceId"
-      LEFT JOIN "User" u ON u."id" = ar."approvedById"
-    `;
+  WITH inserted AS (
+    INSERT INTO "AttendanceRequest" (
+      "employeeId",
+      "attendanceId",
+      "requestType",
+      "reason",
+      "notes",
+      "createdAt",
+      "updatedAt"
+    )
+    VALUES (
+      ${employeeId},
+      ${attendance?.id ?? null},
+      ${input.requestType},
+      ${reason},
+      ${notes},
+      NOW(),
+      NOW()
+    )
+    RETURNING *
+  )
+  SELECT
+    ar."id",
+    ar."employeeId",
+    ep."employeeName",
+    ep."employeeCode",
+    d."name" AS "departmentName",
+    COALESCE(a."date", ar."createdAt") AS "attendanceDate",
+    ar."requestType",
+    ar."reason",
+    ar."notes",
+    ar."status",
+    TRIM(COALESCE(u."firstName", '') || ' ' || COALESCE(u."lastName", '')) AS "approvedByName",
+    ar."approvedAt",
+    ar."rejectionReason",
+    ar."createdAt",
+    ar."updatedAt"
+  FROM inserted ar
+  JOIN "EmployeeProfile" ep ON ep."id" = ar."employeeId"
+  LEFT JOIN "Department" d ON d."id" = ep."departmentId"
+  LEFT JOIN "Attendance" a ON a."id" = ar."attendanceId"
+  LEFT JOIN "User" u ON u."id" = ar."approvedById"
+`;
 
     if (!request) {
       throw new Error("Failed to create attendance request");
@@ -397,12 +414,16 @@ export async function createAttendanceRequest(input: {
   }
 }
 
-export async function getAttendanceRequests(): Promise<AttendanceRequestRecord[]> {
+export async function getAttendanceRequests(): Promise<
+  AttendanceRequestRecord[]
+> {
   const prisma = getPrismaClient();
   const currentUser = await requireAttendanceRequestPermission("view");
   const isHrOrAdmin = canManageAllAttendance(currentUser.role?.name);
 
-  const managedEmployeeIds = isHrOrAdmin ? [] : await getManagedEmployeeIds(currentUser);
+  const managedEmployeeIds = isHrOrAdmin
+    ? []
+    : await getManagedEmployeeIds(currentUser);
   const employeeIds = isHrOrAdmin ? null : managedEmployeeIds;
 
   if (!isHrOrAdmin && !managedEmployeeIds.length) {
@@ -426,8 +447,10 @@ export async function getAttendanceRequestDashboard() {
   return requests.reduce(
     (acc, request) => {
       if (request.status === AttendanceRequestStatus.PENDING) acc.pending += 1;
-      if (request.status === AttendanceRequestStatus.APPROVED) acc.approved += 1;
-      if (request.status === AttendanceRequestStatus.REJECTED) acc.rejected += 1;
+      if (request.status === AttendanceRequestStatus.APPROVED)
+        acc.approved += 1;
+      if (request.status === AttendanceRequestStatus.REJECTED)
+        acc.rejected += 1;
 
       return acc;
     },
@@ -450,7 +473,9 @@ export async function reviewAttendanceRequest(
     const prisma = getPrismaClient();
     const currentUser = await requireAttendanceRequestPermission("edit");
     const isHrOrAdmin = canManageAllAttendance(currentUser.role?.name);
-    const managedEmployeeIds = isHrOrAdmin ? [] : await getManagedEmployeeIds(currentUser);
+    const managedEmployeeIds = isHrOrAdmin
+      ? []
+      : await getManagedEmployeeIds(currentUser);
 
     if (
       input.status !== AttendanceRequestStatus.APPROVED &&
@@ -470,7 +495,9 @@ export async function reviewAttendanceRequest(
     }
 
     if (!isHrOrAdmin && !managedEmployeeIds.length) {
-      throw new Error("You can only review requests from your reporting employees");
+      throw new Error(
+        "You can only review requests from your reporting employees",
+      );
     }
 
     if (
@@ -478,28 +505,40 @@ export async function reviewAttendanceRequest(
       managedEmployeeIds.length &&
       !managedEmployeeIds.includes(existing.employeeId)
     ) {
-      throw new Error("You can only review requests from your reporting employees");
+      throw new Error(
+        "You can only review requests from your reporting employees",
+      );
     }
 
     if (existing.status !== AttendanceRequestStatus.PENDING) {
       throw new Error("Only pending attendance requests can be reviewed");
     }
 
-    const requestDate = toDateOnly(existing.attendanceDate ?? existing.createdAt);
-    const attendanceStatus = getAttendanceStatusForRequest(existing.requestType);
+    const requestDate = toDateOnly(
+      existing.attendanceDate ?? existing.createdAt,
+    );
+    const attendanceStatus = getAttendanceStatusForRequest(
+      existing.requestType,
+    );
     const reviewerId = currentUser.id || null;
 
     const request = await prisma.$transaction(async (transaction) => {
-      const [updatedRequest] = await transaction.$queryRaw<AttendanceRequestRawRow[]>`
+      const [updatedRequest] = await transaction.$queryRaw<
+        AttendanceRequestRawRow[]
+      >`
         WITH updated AS (
           UPDATE "AttendanceRequest"
           SET
             "status" = ${input.status},
             "approvedById" = ${
-              input.status === AttendanceRequestStatus.APPROVED ? reviewerId : null
+              input.status === AttendanceRequestStatus.APPROVED
+                ? reviewerId
+                : null
             },
             "approvedAt" = ${
-              input.status === AttendanceRequestStatus.APPROVED ? new Date() : null
+              input.status === AttendanceRequestStatus.APPROVED
+                ? new Date()
+                : null
             },
             "rejectionReason" = ${
               input.status === AttendanceRequestStatus.REJECTED
@@ -540,7 +579,8 @@ export async function reviewAttendanceRequest(
         input.status === AttendanceRequestStatus.APPROVED
           ? {
               status: attendanceStatus,
-              isHalfDay: existing.requestType === AttendanceRequestType.HALF_DAY,
+              isHalfDay:
+                existing.requestType === AttendanceRequestType.HALF_DAY,
               isLate: false,
               remarks: [
                 `Attendance request approved: ${existing.requestType.replaceAll("_", " ")}`,

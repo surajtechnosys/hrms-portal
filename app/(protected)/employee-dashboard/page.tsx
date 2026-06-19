@@ -8,6 +8,10 @@ import { getInterviewWorkspace } from "@/lib/actions/interviews";
 import { getLeaveRequests } from "@/lib/actions/leave-requests";
 import InterviewDataTable from "@/components/interviews/interview-data-table";
 import { LeaveRequestReviewTable } from "@/components/leave-requests/leave-request-review-table";
+import { EmploymentManagementCard } from "@/components/employment-management/employment-management-card";
+import { EmployeeEmploymentStatusCard } from "@/components/employment-management/employee-employment-status-card";
+import { EmployeeEmploymentTimelineCard } from "@/components/employment-management/employee-employment-timeline-card";
+import { EmployeeEmploymentUpdatesCard } from "@/components/employment-management/employee-employment-updates-card";
 import {
   isCurrentEmployeeHr,
   isCurrentEmployeeManager,
@@ -80,6 +84,7 @@ export default async function EmployeeDashboardPage({
   const isHrEmployee = isEmployee ? await isCurrentEmployeeHr() : false;
   const isManagerEmployee =
     isEmployee && !isHrEmployee ? await isCurrentEmployeeManager() : false;
+  const canManageEmploymentActions = await isCurrentEmployeeHr();
 
   if (!session?.user?.email) {
     redirect("/");
@@ -792,40 +797,16 @@ export default async function EmployeeDashboardPage({
 
                 <div className="mt-4 space-y-3">
                   {trackedEmployees.length ? (
-                    trackedEmployees.map(({ profile, tracking }) => (
-                      <div
-                        key={profile.id}
-                        className={`rounded-2xl border p-4 ${
-                          tracking.isEndingSoon
-                            ? "border-amber-200 bg-amber-50"
-                            : "border-slate-200 bg-slate-50"
-                        }`}
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
-                            <p className="font-medium text-slate-900">
-                              {profile.employeeName}
-                            </p>
-                            <p className="text-sm text-slate-500">
-                              {profile.employeeCode} · {tracking.periodLabel}
-                            </p>
-                          </div>
-                          <Badge
-                            className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ${getEmployeeTypeTone(profile.employeeType)}`}
-                          >
-                            {getEmployeeTypeLabel(profile.employeeType)}
-                          </Badge>
-                        </div>
-                        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600">
-                          <span>{tracking.periodLabel} ends in {formatRemainingDays(tracking.remainingDays)}</span>
-                          <Link
-                            href={`/employee-profiles/${profile.employeeCode}`}
-                            className="font-medium text-cyan-700 hover:underline"
-                          >
-                            Open profile
-                          </Link>
-                        </div>
-                      </div>
+                    trackedEmployees.map(({ employmentRecord, tracking }) => (
+                      <EmploymentManagementCard
+                        key={employmentRecord.id}
+                        employee={employmentRecord}
+                        canManage={canManageEmploymentActions}
+                        historyHref={`/employee-profiles/${employmentRecord.employeeCode}`}
+                        viewLabel="View"
+                        title="Employment Management"
+                        className={tracking.tone.cardClassName}
+                      />
                     ))
                   ) : (
                     <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">
@@ -1429,6 +1410,21 @@ export default async function EmployeeDashboardPage({
         },
         take: 5,
       },
+      employmentReviews: {
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 10,
+      },
+      notifications: {
+        where: {
+          readAt: null,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 10,
+      },
       transferPromotions: {
         select: {
           id: true,
@@ -1470,6 +1466,8 @@ export default async function EmployeeDashboardPage({
       .join(" ") ||
     "Employee";
   const leaveSummary = await getLeaveDashboard();
+  const employmentReviews = employeeProfile.employmentReviews;
+  const latestEmploymentReview = employmentReviews[0] ?? null;
 
   const quickStats = [
     {
@@ -1587,6 +1585,20 @@ export default async function EmployeeDashboardPage({
           ))}
         </section>
 
+        <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+          <EmployeeEmploymentStatusCard
+            employee={employeeProfile}
+            latestReview={latestEmploymentReview}
+          />
+          <EmployeeEmploymentUpdatesCard
+            notifications={employeeProfile.notifications}
+          />
+        </section>
+
+        <section className="rounded-lg border bg-white p-6 shadow-sm">
+          <EmployeeEmploymentTimelineCard reviews={employmentReviews} />
+        </section>
+
         <section className="grid gap-4 lg:grid-cols-[1fr_1fr]">
           <div className="rounded-lg border bg-white p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-slate-900">
@@ -1675,3 +1687,4 @@ export default async function EmployeeDashboardPage({
     </div>
   );
 }
+

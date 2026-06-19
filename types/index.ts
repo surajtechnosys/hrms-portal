@@ -23,6 +23,8 @@ import {
   workLocationSchema,
   attendanceSchema,
   attendanceRequestSchema,
+  employmentReviewSchema,
+  notificationSchema,
 } from "@/lib/validators";
 
 export type Role = z.infer<typeof roleSchema>;
@@ -71,6 +73,16 @@ export type EmployeeProfile = z.infer<typeof employeeProfileSchema> & {
   managerName?: string;
   workLocationName?: string;
   projectNames?: string[];
+};
+
+export type EmploymentReview = z.infer<typeof employmentReviewSchema> & {
+  actionLabel?: string;
+  oldEmployeeTypeLabel?: string;
+  newEmployeeTypeLabel?: string;
+};
+
+export type EmploymentNotification = z.infer<typeof notificationSchema> & {
+  actionLabel?: string;
 };
 
 export type Project = z.infer<typeof projectSchema>

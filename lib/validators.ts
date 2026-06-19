@@ -555,6 +555,35 @@ export const employeeProfileSchema = z.object({
   }
 });
 
+/* ---------------- EMPLOYMENT REVIEW ---------------- */
+export const employmentReviewSchema = z.object({
+  id: z.string().optional(),
+  employeeId: z.string().min(1, "Employee is required"),
+  action: z.string().min(1, "Action is required"),
+  oldEmployeeType: z.nativeEnum(EmployeeType),
+  newEmployeeType: z.nativeEnum(EmployeeType),
+  oldEndDate: z.string().nullable().optional(),
+  newEndDate: z.string().nullable().optional(),
+  remarks: z.string().optional(),
+  reviewedByUserId: z.string().nullable().optional(),
+  reviewedByName: z.string().nullable().optional(),
+  createdAt: z.string().nullable().optional(),
+  updatedAt: z.string().nullable().optional(),
+});
+
+/* ---------------- NOTIFICATION ---------------- */
+export const notificationSchema = z.object({
+  id: z.string().optional(),
+  employeeId: z.string().min(1, "Employee is required"),
+  employmentReviewId: z.string().nullable().optional(),
+  action: z.string().min(1, "Action is required"),
+  title: z.string().min(1, "Title is required"),
+  message: z.string().min(1, "Message is required"),
+  readAt: z.string().nullable().optional(),
+  createdAt: z.string().nullable().optional(),
+  updatedAt: z.string().nullable().optional(),
+});
+
 /* ---------------- USER ---------------- */
 export const userSchema = z.object({
   id: z.string().optional(),

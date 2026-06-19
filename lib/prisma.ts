@@ -93,6 +93,26 @@ function hasAttendanceRequestModel(client: PrismaClient) {
   return Boolean(models?.AttendanceRequest)
 }
 
+function hasEmploymentReviewModel(client: PrismaClient) {
+  const models = (client as PrismaClient & {
+    _runtimeDataModel?: {
+      models?: Record<string, unknown>
+    }
+  })._runtimeDataModel?.models
+
+  return Boolean(models?.EmploymentReview)
+}
+
+function hasNotificationModel(client: PrismaClient) {
+  const models = (client as PrismaClient & {
+    _runtimeDataModel?: {
+      models?: Record<string, unknown>
+    }
+  })._runtimeDataModel?.models
+
+  return Boolean(models?.Notification)
+}
+
 export function getPrismaClient() {
   const cached = globalForPrisma.prisma
 
@@ -101,7 +121,9 @@ export function getPrismaClient() {
     hasApplicantDocumentReviewFields(cached) &&
     hasEodReportingFields(cached) &&
     hasRecruitmentStorageModels(cached) &&
-    hasAttendanceRequestModel(cached)
+    hasAttendanceRequestModel(cached) &&
+    hasEmploymentReviewModel(cached) &&
+    hasNotificationModel(cached)
   ) {
     return cached
   }

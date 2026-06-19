@@ -16,7 +16,10 @@ import {
   getEmployeeTypeLabel,
   getEmployeeTypeTone,
   getEmploymentTrackingState,
+  mapEmploymentReviewTimelineItem,
 } from "@/lib/employee-employment";
+import { EmploymentHistoryCard } from "@/components/employment-management/employment-history-card";
+import { EmploymentManagementCard } from "@/components/employment-management/employment-management-card";
 import {
   ArrowLeft,
   BadgeCheck,
@@ -175,6 +178,12 @@ export default async function EmployeeProfileDetailPage({
           },
         },
       },
+      employmentReviews: {
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 25,
+      },
       _count: {
         select: {
           employeeDocuments: true,
@@ -194,6 +203,10 @@ export default async function EmployeeProfileDetailPage({
       ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
       : "bg-rose-50 text-rose-700 ring-rose-200";
   const employmentTracking = getEmploymentTrackingState(employeeProfile);
+  const canManageEmploymentActions = isHrEmployee;
+  const employmentReviews = employeeProfile.employmentReviews.map(
+    mapEmploymentReviewTimelineItem,
+  );
 
   return (
     <div className="space-y-6">
@@ -359,6 +372,18 @@ export default async function EmployeeProfileDetailPage({
           hint="Primary identity reference"
           icon={BadgeCheck}
         />
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <EmploymentManagementCard
+          employee={employeeProfile}
+          canManage={canManageEmploymentActions}
+          historyHref="#employment-history"
+          viewLabel="View History"
+          title="Employment Management"
+        />
+
+        <EmploymentHistoryCard reviews={employmentReviews} />
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
